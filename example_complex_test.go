@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/rs/zerolog"
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 )
 
 // Plugin represents a system plugin

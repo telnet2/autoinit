@@ -404,6 +404,52 @@ func (s *Service) PreFieldInit(ctx context.Context, fieldName string, fieldValue
 }
 ```
 
+## 🏗️ Container Pattern for Enterprise Applications
+
+AutoInit supports the **container pattern** for organizing complex applications into logical groups. This approach is perfect for enterprise applications with multiple architectural layers.
+
+### Container-Based Architecture
+
+```go
+// Organize dependencies by architectural layers
+type App struct {
+    // Infrastructure layer
+    Database *Database `yaml:"database"`
+    Cache    *Cache    `yaml:"cache"`
+    
+    // Data access layer (DAO container)
+    DAOs *DAOContainer `yaml:"dao"`
+    
+    // Business logic layer (Handler container)
+    Handlers *HandlerContainer `yaml:"handlers"`
+    
+    // Presentation layer
+    Server *HTTPServer `yaml:"server"`
+}
+
+// Define containers as logical groups
+type DAOContainer struct {
+    UserDAO    *UserDAO    `yaml:"user_dao"`
+    ProductDAO *ProductDAO `yaml:"product_dao"`
+    OrderDAO   *OrderDAO   `yaml:"order_dao"`
+}
+
+type HandlerContainer struct {
+    UserHandler    *UserHandler    `yaml:"user_handler"`
+    ProductHandler *ProductHandler `yaml:"product_handler"`
+    OrderHandler   *OrderHandler   `yaml:"order_handler"`
+}
+```
+
+**Benefits for Professional Teams**:
+- ✅ **Logical organization** by architectural layers
+- ✅ **Simplified dependency injection** - inject containers, not individual components
+- ✅ **Easier testing** - mock entire containers for unit tests
+- ✅ **Clear boundaries** between architectural layers
+- ✅ **Scalable team development** - teams work on container boundaries
+
+[📖 **Learn more in BEST_PRACTICES.md** →](BEST_PRACTICES.md#-container-pattern-for-dependency-organization)
+
 ## 🎯 Real-World Examples
 
 ### YAML-Driven Configuration with One-Shot Initialization
@@ -612,10 +658,11 @@ AutoInit is **significantly lighter** than traditional DI frameworks:
 
 > 📖 **See [COMPARISON.md](COMPARISON.md) for detailed analysis vs Wire, FX, Dig, Spring, and more**
 
-## 📚 Documentation
+## 📚 Documentation & Best Practices
 
 | Document | Description |
 |----------|-------------|
+| [BEST_PRACTICES.md](BEST_PRACTICES.md) | **Production-ready patterns & container architecture** |
 | [COMPONENTS.md](COMPONENTS.md) | Component-based architecture guide |
 | [COMPARISON.md](COMPARISON.md) | **Framework comparison vs Wire, FX, Dig, Spring** |
 | [FINDER.md](FINDER.md) | Component discovery system |
@@ -628,12 +675,14 @@ AutoInit is **significantly lighter** than traditional DI frameworks:
 AutoInit's declarative approach shines in these scenarios:
 
 - **🏗️ Application Bootstrap**: Declare complex architectures without imperative wiring
+- **🏗️ Enterprise Applications**: Container pattern for organizing complex architectures
 - **🔌 Plugin Systems**: Define plugin structure, let AutoInit handle dynamic loading
-- **🧪 Testing**: Declare test scenarios with mock components - no container setup  
+- **🧪 Testing**: Mock entire containers for unit testing - no setup required
 - **☁️ Microservices**: YAML-driven configuration with automatic component discovery
 - **🏭 Factory Patterns**: Struct composition replaces complex factory hierarchies
 - **🎯 Dependency Injection**: Go-native DI without external container frameworks
 - **📄 Configuration Management**: Pure declarative config with type-safe YAML binding
+- **👥 Team Development**: Clear boundaries with container-based architecture
 
 ## 🤝 Contributing
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 )
 
 // Service component for example

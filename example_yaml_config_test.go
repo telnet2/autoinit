@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 	"gopkg.in/yaml.v3"
 )
 

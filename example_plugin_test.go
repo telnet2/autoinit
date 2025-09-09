@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog"
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 )
 
 // PluginComponent represents a pluggable component

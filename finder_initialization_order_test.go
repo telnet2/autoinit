@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 )
 
 // Components for testing initialization order

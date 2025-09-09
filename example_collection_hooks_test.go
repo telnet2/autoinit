@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/rs/zerolog"
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 )
 
 // MicroService represents a microservice

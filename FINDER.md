@@ -23,7 +23,7 @@ This ensures that local components override global ones naturally.
 ### Enable Component Search
 
 ```go
-import "github.com/user/autoinit"
+import "github.com/telnet2/autoinit"
 
 // Enable component search in context
 ctx := autoinit.WithComponentSearch(context.Background())

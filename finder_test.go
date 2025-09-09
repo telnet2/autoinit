@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 )
 
 // Test components for finder

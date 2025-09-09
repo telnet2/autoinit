@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/user/autoinit"
+	"github.com/telnet2/autoinit"
 )
 
 // Interface for testing interface-based search

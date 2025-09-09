@@ -390,7 +390,7 @@ package main
 
 import (
     "context"
-    "github.com/user/autoinit"
+    "github.com/telnet2/autoinit"
 )
 
 // Registry for component discovery

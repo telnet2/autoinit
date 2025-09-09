@@ -1,4 +1,4 @@
-module github.com/telnet/autoinit
+module github.com/telnet2/autoinit
 
 go 1.25.0
 
