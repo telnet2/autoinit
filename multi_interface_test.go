@@ -7,6 +7,13 @@ import (
 	"testing"
 )
 
+// Global context key types for testing
+type testKeyType string
+type contextKeyType string
+
+const testContextKey testKeyType = "test-key"
+const contextTestKey contextKeyType = "test-key"
+
 // Test structs for different interface implementations
 
 // SimpleOnly implements only Init()
@@ -31,10 +38,20 @@ type ContextOnly struct {
 func (c *ContextOnly) Init(ctx context.Context) error {
 	c.Initialized = true
 	c.Name = "context"
-	// Try to get a value from context
-	if val := ctx.Value("test-key"); val != nil {
+	// Try to get a value from context using the global key types
+
+	// Try the testKey type first (used in TestContextInitInterface)
+	if val := ctx.Value(testContextKey); val != nil {
 		c.CtxValue = val.(string)
+		return nil
 	}
+
+	// Try the contextKey type (used in TestMixedInterfaces)
+	if val := ctx.Value(contextTestKey); val != nil {
+		c.CtxValue = val.(string)
+		return nil
+	}
+
 	return nil
 }
 
@@ -140,7 +157,7 @@ func TestSimpleInitInterface(t *testing.T) {
 // Test context Init(ctx) interface
 func TestContextInitInterface(t *testing.T) {
 	component := &ContextOnly{}
-	ctx := context.WithValue(context.Background(), "test-key", "test-value")
+	ctx := context.WithValue(context.Background(), testContextKey, "test-value")
 
 	err := AutoInit(ctx, component)
 	if err != nil {
@@ -190,7 +207,7 @@ func TestMixedInterfaces(t *testing.T) {
 	container := &MixedContainer{
 		Name: "mixed-container",
 	}
-	ctx := context.WithValue(context.Background(), "test-key", "ctx-value")
+	ctx := context.WithValue(context.Background(), contextTestKey, "ctx-value")
 
 	err := AutoInit(ctx, container)
 	if err != nil {
@@ -314,14 +331,14 @@ func (s *SlowInit) Init(ctx context.Context) error {
 func TestContextCancellation(t *testing.T) {
 	component := &SlowInit{}
 
-	// Create a cancelled context
+	// Create a canceled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
 	err := AutoInit(ctx, component)
 
 	if err == nil {
-		t.Fatal("expected error for cancelled context")
+		t.Fatal("expected error for canceled context")
 	}
 
 	if !strings.Contains(err.Error(), "context canceled") {

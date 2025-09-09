@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+const (
+	initializedName = "initialized"
+)
+
 // Test structs for various scenarios
 
 // Simple struct with Init method
@@ -17,7 +21,7 @@ type SimpleComponent struct {
 
 func (s *SimpleComponent) Init(ctx context.Context) error {
 	s.Initialized = true
-	s.Name = "initialized"
+	s.Name = initializedName
 	return nil
 }
 
@@ -82,7 +86,7 @@ func (c *ConfigManager) Init(ctx context.Context) error {
 	if c.Settings == nil {
 		c.Settings = make(map[string]string)
 	}
-	c.Settings["initialized"] = "true"
+	c.Settings[initializedName] = "true"
 	return nil
 }
 
@@ -166,7 +170,7 @@ func TestSimpleInit(t *testing.T) {
 		t.Error("component was not initialized")
 	}
 
-	if component.Name != "initialized" {
+	if component.Name != initializedName {
 		t.Errorf("expected Name to be 'initialized', got '%s'", component.Name)
 	}
 }
@@ -304,7 +308,7 @@ func TestComplexStructInit(t *testing.T) {
 		t.Error("Config was not initialized")
 	}
 
-	if app.Config.Settings["initialized"] != "true" {
+	if app.Config.Settings[initializedName] != "true" {
 		t.Error("Config settings not properly initialized")
 	}
 

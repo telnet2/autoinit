@@ -85,17 +85,17 @@ func getParentChain(ctx context.Context) *ParentChain {
 // architecture where you can add new components without changing initialization code.
 // Uses default logger for trace logging.
 func AutoInit(ctx context.Context, target interface{}) error {
-	return AutoInitWithOptions(ctx, target, nil)
+	return WithOptions(ctx, target, nil)
 }
 
-// AutoInitWithOptions recursively discovers and initializes all components with custom options.
+// WithOptions recursively discovers and initializes all components with custom options.
 // Components can be added or removed without changing initialization code - just plug them
 // into your struct and they'll be automatically initialized.
 // If options is nil or Logger is nil, uses default logger to stdout.
 // The context and parent reference are propagated through the component tree.
 // Supports: Init(), Init(ctx), and Init(ctx, parent) methods.
 // Includes cycle detection to prevent infinite loops in component references.
-func AutoInitWithOptions(ctx context.Context, target interface{}, options *Options) error {
+func WithOptions(ctx context.Context, target interface{}, options *Options) error {
 	// Setup logger
 	var logger zerolog.Logger
 	if options != nil && options.Logger != nil {
@@ -139,7 +139,7 @@ func AutoInitWithOptions(ctx context.Context, target interface{}, options *Optio
 	}
 
 	// Start recursive initialization with no parent (empty reflect.Value)
-	err := initStructWithVisited(ctx, v, reflect.Value{}, []string{}, logger, visited, options)
+	err := initStructWithVisited(ctx, v, reflect.Value{}, []string{}, &logger, visited, options)
 
 	if err != nil {
 		logger.Error().
@@ -168,16 +168,10 @@ func pathToString(path []string) string {
 	return result
 }
 
-// initStruct is a wrapper for backward compatibility
-func initStruct(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger zerolog.Logger) error {
-	// Call the new version without cycle detection for backward compatibility
-	return initStructWithVisited(ctx, v, parent, path, logger, nil, nil)
-}
-
 // initStructWithVisited recursively discovers and initializes all components in a struct.
 // Each component (struct with Init method) is initialized after its child components,
 // enabling proper dependency order.
-func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger zerolog.Logger, visited map[uintptr]bool, options *Options) error {
+func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger *zerolog.Logger, visited map[uintptr]bool, options *Options) error {
 	pathStr := pathToString(path)
 
 	// Handle pointer to struct
@@ -277,7 +271,9 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 		}
 
 		// Create path for error reporting
-		fieldPath := append(path, fieldType.Name)
+		fieldPath := make([]string, len(path)+1)
+		copy(fieldPath, path)
+		fieldPath[len(path)] = fieldType.Name
 		fieldPathStr := pathToString(fieldPath)
 
 		logger.Trace().
@@ -345,7 +341,9 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 			// Initialize each element if it's a struct
 			for j := 0; j < field.Len(); j++ {
 				elem := field.Index(j)
-				elemPath := append(fieldPath, fmt.Sprintf("[%d]", j))
+				elemPath := make([]string, len(fieldPath)+1)
+				copy(elemPath, fieldPath)
+				elemPath[len(fieldPath)] = fmt.Sprintf("[%d]", j)
 				if err := initStructWithVisited(ctx, elem, v, elemPath, logger, visited, options); err != nil {
 					return err
 				}
@@ -380,7 +378,9 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 			// Initialize each map value if it's a struct
 			for _, key := range field.MapKeys() {
 				elem := field.MapIndex(key)
-				elemPath := append(fieldPath, fmt.Sprintf("[%v]", key))
+				elemPath := make([]string, len(fieldPath)+1)
+				copy(elemPath, fieldPath)
+				elemPath[len(fieldPath)] = fmt.Sprintf("[%v]", key)
 
 				// Map values are not addressable, so we need to handle them specially
 				if elem.Kind() == reflect.Struct {
@@ -423,24 +423,9 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 	return nil
 }
 
-// initValue handles initialization of a reflect.Value that might be a struct
-func initValue(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger zerolog.Logger) error {
-	// Handle interface values
-	if v.Kind() == reflect.Interface && !v.IsNil() {
-		v = v.Elem()
-	}
-
-	// Only initialize structs
-	if v.Kind() == reflect.Struct || (v.Kind() == reflect.Ptr && !v.IsNil() && v.Elem().Kind() == reflect.Struct) {
-		return initStruct(ctx, v, parent, path, logger)
-	}
-
-	return nil
-}
-
 // callInitIfExists checks if the value has any Init method variant and calls it
 // Priority order: Init(ctx, parent) > Init(ctx) > Init()
-func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger zerolog.Logger) error {
+func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger *zerolog.Logger) error {
 	pathStr := pathToString(path)
 
 	// Get a pointer to the value if it's not already a pointer
@@ -619,7 +604,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 }
 
 // callPreInit calls PreInit hook if the struct implements it
-func callPreInit(ctx context.Context, v reflect.Value, path []string, logger zerolog.Logger) error {
+func callPreInit(ctx context.Context, v reflect.Value, path []string, logger *zerolog.Logger) error {
 	pathStr := pathToString(path)
 
 	// Get a pointer to the value if it's not already a pointer
@@ -654,7 +639,7 @@ func callPreInit(ctx context.Context, v reflect.Value, path []string, logger zer
 }
 
 // callPostInit calls PostInit hook if the struct implements it
-func callPostInit(ctx context.Context, v reflect.Value, path []string, logger zerolog.Logger) error {
+func callPostInit(ctx context.Context, v reflect.Value, path []string, logger *zerolog.Logger) error {
 	pathStr := pathToString(path)
 
 	// Get a pointer to the value if it's not already a pointer
@@ -689,7 +674,7 @@ func callPostInit(ctx context.Context, v reflect.Value, path []string, logger ze
 }
 
 // callPreFieldHook calls parent's PreFieldInit hook if it implements PreFieldHook
-func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger zerolog.Logger) error {
+func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger) error {
 	if !parent.IsValid() {
 		return nil
 	}
@@ -742,7 +727,7 @@ func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName strin
 }
 
 // callPostFieldHook calls parent's PostFieldInit hook if it implements PostFieldHook
-func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger zerolog.Logger) error {
+func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger) error {
 	if !parent.IsValid() {
 		return nil
 	}
@@ -792,4 +777,107 @@ func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName stri
 	}
 
 	return nil
+}
+
+// callHookIfExists is a helper function to call initialization hooks
+func callHookIfExists(ctx context.Context, v reflect.Value, path []string, logger *zerolog.Logger, hookName string, hookFunc func(reflect.Value) error) error {
+	pathStr := pathToString(path)
+
+	// Get a pointer to the value if it's not already a pointer
+	ptr := v
+	if v.Kind() != reflect.Ptr && v.CanAddr() {
+		ptr = v.Addr()
+	}
+
+	err := hookFunc(ptr)
+	if err != nil {
+		logger.Trace().
+			Str("path", pathStr).
+			Str("type", ptr.Type().String()).
+			Msg("Calling " + hookName)
+
+		logger.Error().
+			Str("path", pathStr).
+			Err(err).
+			Msg(hookName + " failed")
+		return &InitError{
+			Path:      path,
+			FieldType: ptr.Type().String(),
+			Cause:     err,
+		}
+	} else if err == nil {
+		// Only log if hook was actually called - check if interface was implemented
+		logger.Trace().
+			Str("path", pathStr).
+			Str("type", ptr.Type().String()).
+			Msg("Calling " + hookName)
+		logger.Trace().
+			Str("path", pathStr).
+			Msg(hookName + " completed successfully")
+	}
+
+	return nil
+}
+
+// callFieldHook is a helper function for field-level hooks
+func callFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger, hookName string, hookFunc func(interface{}, interface{}) error) error {
+	if !parent.IsValid() {
+		return nil
+	}
+
+	// Get a pointer to the parent if it's not already a pointer
+	parentPtr := parent
+	if parent.Kind() != reflect.Ptr && parent.CanAddr() {
+		parentPtr = parent.Addr()
+	}
+
+	// Always pass a pointer to the field to allow modification
+	var fieldInterface interface{}
+	if fieldValue.CanInterface() {
+		if fieldValue.Kind() == reflect.Ptr {
+			// Already a pointer
+			fieldInterface = fieldValue.Interface()
+		} else if fieldValue.CanAddr() {
+			// Get pointer to the field
+			fieldInterface = fieldValue.Addr().Interface()
+		} else {
+			// This shouldn't happen for struct fields, but handle it gracefully
+			// Log a warning and pass the value itself
+			logger.Warn().
+				Str("field", fieldName).
+				Str("kind", fieldValue.Kind().String()).
+				Msg("Cannot get pointer to field, passing value instead")
+			fieldInterface = fieldValue.Interface()
+		}
+	}
+
+	err := hookFunc(parentPtr.Interface(), fieldInterface)
+	if err != nil {
+		logger.Trace().
+			Str("parent_type", parentPtr.Type().String()).
+			Str("field", fieldName).
+			Msg("Calling " + hookName + " hook")
+
+		logger.Error().
+			Str("field", fieldName).
+			Err(err).
+			Msg(hookName + " hook failed")
+		return err
+	}
+
+	// Only log if hook was actually called - check if interface was implemented
+	logger.Trace().
+		Str("parent_type", parentPtr.Type().String()).
+		Str("field", fieldName).
+		Msg("Calling " + hookName + " hook")
+	logger.Trace().
+		Str("field", fieldName).
+		Msg(hookName + " hook completed")
+
+	return nil
+}
+
+// AutoInitWithOptions is deprecated. Use WithOptions instead.
+func AutoInitWithOptions(ctx context.Context, target interface{}, options *Options) error {
+	return WithOptions(ctx, target, options)
 }

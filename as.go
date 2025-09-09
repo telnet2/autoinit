@@ -8,7 +8,7 @@ import (
 
 // Filter interface for additional search constraints in As pattern
 type Filter interface {
-	Matches(field reflect.Value, fieldType reflect.StructField) bool
+	Matches(field reflect.Value, fieldType *reflect.StructField) bool
 }
 
 // fieldNameFilter matches components by field name
@@ -16,7 +16,7 @@ type fieldNameFilter struct {
 	name string
 }
 
-func (f fieldNameFilter) Matches(field reflect.Value, fieldType reflect.StructField) bool {
+func (f fieldNameFilter) Matches(field reflect.Value, fieldType *reflect.StructField) bool {
 	return strings.EqualFold(fieldType.Name, f.name)
 }
 
@@ -25,7 +25,7 @@ type jsonTagFilter struct {
 	tag string
 }
 
-func (f jsonTagFilter) Matches(field reflect.Value, fieldType reflect.StructField) bool {
+func (f jsonTagFilter) Matches(field reflect.Value, fieldType *reflect.StructField) bool {
 	jsonTag := fieldType.Tag.Get("json")
 	tagName := strings.Split(jsonTag, ",")[0]
 	return tagName == f.tag
@@ -37,7 +37,7 @@ type customTagFilter struct {
 	value string
 }
 
-func (f customTagFilter) Matches(field reflect.Value, fieldType reflect.StructField) bool {
+func (f customTagFilter) Matches(field reflect.Value, fieldType *reflect.StructField) bool {
 	tagValue := fieldType.Tag.Get(f.key)
 	return tagValue == f.value
 }
@@ -75,7 +75,7 @@ func WithTag(key, value string) Filter {
 //
 // Returns true if a dependency matching ALL criteria was found and assigned.
 // Returns false if no matching dependency exists.
-func As[T any](ctx context.Context, self interface{}, parent interface{}, target *T, filters ...Filter) bool {
+func As[T any](ctx context.Context, self, parent interface{}, target *T, filters ...Filter) bool {
 	if target == nil {
 		return false
 	}
@@ -113,7 +113,7 @@ func As[T any](ctx context.Context, self interface{}, parent interface{}, target
 
 // MustAs is like As but panics if the dependency is not found.
 // Use this when a dependency is required for the component to function.
-func MustAs[T any](ctx context.Context, self interface{}, parent interface{}, target *T, filters ...Filter) {
+func MustAs[T any](ctx context.Context, self, parent interface{}, target *T, filters ...Filter) {
 	if !As(ctx, self, parent, target, filters...) {
 		targetType := reflect.TypeOf(target).Elem()
 		panic("required dependency not found: " + targetType.String())
@@ -121,7 +121,7 @@ func MustAs[T any](ctx context.Context, self interface{}, parent interface{}, ta
 }
 
 // asSearch performs the actual search with conjunctive filtering
-func asSearch(ctx context.Context, self interface{}, parent interface{}, targetType reflect.Type, filters ...Filter) interface{} {
+func asSearch(ctx context.Context, self, parent interface{}, targetType reflect.Type, filters ...Filter) interface{} {
 	if parent == nil {
 		return nil
 	}
@@ -131,7 +131,7 @@ func asSearch(ctx context.Context, self interface{}, parent interface{}, targetT
 }
 
 // searchInStruct searches for matching components in a struct
-func searchInStruct(parent interface{}, exclude interface{}, targetType reflect.Type, filters []Filter) interface{} {
+func searchInStruct(parent, exclude interface{}, targetType reflect.Type, filters []Filter) interface{} {
 	v := reflect.ValueOf(parent)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -169,7 +169,7 @@ func searchInStruct(parent interface{}, exclude interface{}, targetType reflect.
 		}
 
 		// Apply all filters conjunctively
-		if !matchesAllFilters(field, fieldType, filters) {
+		if !matchesAllFilters(field, &fieldType, filters) {
 			continue
 		}
 
@@ -279,7 +279,7 @@ func matchesTargetType(field reflect.Value, targetType reflect.Type) bool {
 }
 
 // matchesAllFilters checks if a field matches all provided filters
-func matchesAllFilters(field reflect.Value, fieldType reflect.StructField, filters []Filter) bool {
+func matchesAllFilters(field reflect.Value, fieldType *reflect.StructField, filters []Filter) bool {
 	// All filters must match (conjunctive/AND logic)
 	for _, filter := range filters {
 		if !filter.Matches(field, fieldType) {
@@ -291,7 +291,7 @@ func matchesAllFilters(field reflect.Value, fieldType reflect.StructField, filte
 
 // AsType provides a simpler API when only type matching is needed
 // This is a convenience wrapper around As with no additional filters
-func AsType[T any](ctx context.Context, self interface{}, parent interface{}) (T, bool) {
+func AsType[T any](ctx context.Context, self, parent interface{}) (T, bool) {
 	var target T
 	ok := As(ctx, self, parent, &target)
 	return target, ok

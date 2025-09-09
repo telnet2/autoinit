@@ -30,7 +30,7 @@ type ComponentFinder struct {
 }
 
 // NewComponentFinder creates a finder for the current component
-func NewComponentFinder(ctx context.Context, self interface{}, parent interface{}) *ComponentFinder {
+func NewComponentFinder(ctx context.Context, self, parent interface{}) *ComponentFinder {
 	return &ComponentFinder{
 		ctx:    ctx,
 		parent: parent,
@@ -134,7 +134,7 @@ func (cf *ComponentFinder) searchSiblings(parent interface{}, exclude interface{
 		}
 
 		// Check if this field matches our search criteria
-		if cf.matchesOption(field, fieldType, opt) {
+		if cf.matchesOption(field, &fieldType, opt) {
 			// For value types, return a pointer if the field is addressable
 			// This allows the found component to be modified
 			if field.Kind() != reflect.Ptr && field.CanAddr() {
@@ -187,7 +187,7 @@ func (cf *ComponentFinder) searchSiblings(parent interface{}, exclude interface{
 }
 
 // matchesOption checks if a field matches the search criteria
-func (cf *ComponentFinder) matchesOption(field reflect.Value, fieldType reflect.StructField, opt SearchOption) bool {
+func (cf *ComponentFinder) matchesOption(field reflect.Value, fieldType *reflect.StructField, opt SearchOption) bool {
 	// Match by type
 	if opt.ByType != nil {
 		if cf.matchesType(field, opt.ByType) {
@@ -351,7 +351,7 @@ func WithComponentSearch(ctx context.Context) context.Context {
 // Helper functions for common search patterns
 
 // FindByType searches for a component by its type
-func FindByType[T any](ctx context.Context, self interface{}, parent interface{}) T {
+func FindByType[T any](ctx context.Context, self, parent interface{}) T {
 	var zero T
 	finder := NewComponentFinder(ctx, self, parent)
 	result := finder.Find(SearchOption{
@@ -366,7 +366,7 @@ func FindByType[T any](ctx context.Context, self interface{}, parent interface{}
 }
 
 // FindByInterface searches for a component that implements an interface
-func FindByInterface[T any](ctx context.Context, self interface{}, parent interface{}) T {
+func FindByInterface[T any](ctx context.Context, self, parent interface{}) T {
 	var zero T
 	finder := NewComponentFinder(ctx, self, parent)
 
@@ -388,7 +388,7 @@ func FindByInterface[T any](ctx context.Context, self interface{}, parent interf
 }
 
 // FindByName searches for a component by field name
-func FindByName(ctx context.Context, self interface{}, parent interface{}, name string) interface{} {
+func FindByName(ctx context.Context, self, parent interface{}, name string) interface{} {
 	finder := NewComponentFinder(ctx, self, parent)
 	return finder.Find(SearchOption{
 		ByFieldName: name,
@@ -396,7 +396,7 @@ func FindByName(ctx context.Context, self interface{}, parent interface{}, name 
 }
 
 // FindByTag searches for a component by JSON tag
-func FindByTag(ctx context.Context, self interface{}, parent interface{}, tag string) interface{} {
+func FindByTag(ctx context.Context, self, parent interface{}, tag string) interface{} {
 	finder := NewComponentFinder(ctx, self, parent)
 	return finder.Find(SearchOption{
 		ByJSONTag: tag,
@@ -404,7 +404,7 @@ func FindByTag(ctx context.Context, self interface{}, parent interface{}, tag st
 }
 
 // FindByCustomTag searches for a component by custom tag
-func FindByCustomTag(ctx context.Context, self interface{}, parent interface{}, tagKey, tagValue string) interface{} {
+func FindByCustomTag(ctx context.Context, self, parent interface{}, tagKey, tagValue string) interface{} {
 	finder := NewComponentFinder(ctx, self, parent)
 	return finder.Find(SearchOption{
 		ByCustomTag: tagValue,

@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+const (
+	initializedValue = "initialized"
+)
+
 // NilPointerStruct for testing nil pointer handling
 type NilPointerStruct struct {
 	Name       string
@@ -13,7 +17,7 @@ type NilPointerStruct struct {
 
 func (n *NilPointerStruct) Init(ctx context.Context) error {
 	n.InitCalled = true
-	n.Name = "initialized"
+	n.Name = initializedValue
 	return nil
 }
 
@@ -53,7 +57,7 @@ func TestNilPointerSkipping(t *testing.T) {
 		t.Error("ValidPtr was not initialized")
 	}
 
-	if container.ValidPtr.Name != "initialized" {
+	if container.ValidPtr.Name != initializedValue {
 		t.Errorf("ValidPtr.Name = %s; want 'initialized'", container.ValidPtr.Name)
 	}
 

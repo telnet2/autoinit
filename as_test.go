@@ -7,6 +7,11 @@ import (
 	"github.com/telnet2/autoinit"
 )
 
+const (
+	primaryDBName = "primary"
+	primaryTag    = "primary"
+)
+
 // Test components for As pattern testing
 type TestDatabase struct {
 	Name      string
@@ -80,7 +85,7 @@ func TestAsWithFieldNameFilter(t *testing.T) {
 	}
 
 	app := &App{
-		PrimaryDB:   &TestDatabase{Name: "primary", Connected: true},
+		PrimaryDB:   &TestDatabase{Name: primaryDBName, Connected: true},
 		SecondaryDB: &TestDatabase{Name: "secondary", Connected: false},
 		MainCache:   &TestCache{Name: "main", Ready: true},
 	}
@@ -92,7 +97,7 @@ func TestAsWithFieldNameFilter(t *testing.T) {
 	if !autoinit.As(ctx, nil, app, &primaryDB, autoinit.WithFieldName("PrimaryDB")) {
 		t.Error("Failed to find PrimaryDB")
 	}
-	if primaryDB.Name != "primary" {
+	if primaryDB.Name != primaryDBName {
 		t.Errorf("Expected DB name 'primary', got '%s'", primaryDB.Name)
 	}
 
@@ -130,7 +135,7 @@ func TestAsWithJSONTagFilter(t *testing.T) {
 
 	// Find database with json:"primary" tag
 	var primaryDB *TestDatabase
-	if !autoinit.As(ctx, nil, app, &primaryDB, autoinit.WithJSONTag("primary")) {
+	if !autoinit.As(ctx, nil, app, &primaryDB, autoinit.WithJSONTag(primaryTag)) {
 		t.Error("Failed to find database with json:primary tag")
 	}
 	if primaryDB.Name != "main" {
@@ -156,7 +161,7 @@ func TestAsWithCustomTagFilter(t *testing.T) {
 	}
 
 	app := &App{
-		PrimaryDB:   &TestDatabase{Name: "primary", Connected: true},
+		PrimaryDB:   &TestDatabase{Name: primaryDBName, Connected: true},
 		SecondaryDB: &TestDatabase{Name: "secondary", Connected: false},
 		Cache:       &TestCache{Name: "cache", Ready: true},
 	}
@@ -165,10 +170,10 @@ func TestAsWithCustomTagFilter(t *testing.T) {
 
 	// Find component with custom tag
 	var primaryDB *TestDatabase
-	if !autoinit.As(ctx, nil, app, &primaryDB, autoinit.WithTag("component", "primary")) {
+	if !autoinit.As(ctx, nil, app, &primaryDB, autoinit.WithTag("component", primaryTag)) {
 		t.Error("Failed to find database with component:primary tag")
 	}
-	if primaryDB.Name != "primary" {
+	if primaryDB.Name != primaryDBName {
 		t.Errorf("Expected DB name 'primary', got '%s'", primaryDB.Name)
 	}
 
@@ -191,7 +196,7 @@ func TestAsConjunctiveFilters(t *testing.T) {
 	}
 
 	app := &App{
-		PrimaryDB:   &TestDatabase{Name: "primary", Connected: true},
+		PrimaryDB:   &TestDatabase{Name: primaryDBName, Connected: true},
 		SecondaryDB: &TestDatabase{Name: "secondary", Connected: false},
 		TertiaryDB:  &TestDatabase{Name: "tertiary", Connected: false},
 	}
@@ -203,19 +208,19 @@ func TestAsConjunctiveFilters(t *testing.T) {
 	if !autoinit.As(ctx, nil, app, &db,
 		autoinit.WithFieldName("PrimaryDB"),
 		autoinit.WithJSONTag("main"),
-		autoinit.WithTag("component", "primary")) {
+		autoinit.WithTag("component", primaryTag)) {
 		t.Error("Failed to find database with all matching filters")
 	}
-	if db.Name != "primary" {
+	if db.Name != primaryDBName {
 		t.Errorf("Expected DB name 'primary', got '%s'", db.Name)
 	}
 
 	// Should not find when one filter doesn't match
 	var notFound *TestDatabase
 	if autoinit.As(ctx, nil, app, &notFound,
-		autoinit.WithFieldName("PrimaryDB"),        // matches
-		autoinit.WithJSONTag("wrong"),              // doesn't match
-		autoinit.WithTag("component", "primary")) { // matches
+		autoinit.WithFieldName("PrimaryDB"),         // matches
+		autoinit.WithJSONTag("wrong"),               // doesn't match
+		autoinit.WithTag("component", primaryTag)) { // matches
 		t.Error("Should not find when one filter doesn't match")
 	}
 

@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+const (
+	childFieldName    = "Child"
+	initializedStatus = "initialized"
+)
+
 // Test types for hook functionality
 type ChildWithHooks struct {
 	Name       string
@@ -22,7 +27,7 @@ func (c *ChildWithHooks) PreInit(ctx context.Context) error {
 
 func (c *ChildWithHooks) Init(ctx context.Context) error {
 	c.InitCalled = true
-	c.Name = "initialized"
+	c.Name = initializedStatus
 	return nil
 }
 
@@ -53,7 +58,7 @@ func (p *ParentWithFieldHooks) PreFieldInit(ctx context.Context, fieldName strin
 	p.PreFieldCalls = append(p.PreFieldCalls, fieldName)
 
 	// Capture the state of the child at pre-hook time
-	if fieldName == "Child" {
+	if fieldName == childFieldName {
 		if child, ok := fieldValue.(*ChildWithHooks); ok {
 			p.PreChildState = &ChildState{
 				Name:       child.Name,
@@ -70,7 +75,7 @@ func (p *ParentWithFieldHooks) PostFieldInit(ctx context.Context, fieldName stri
 	p.PostFieldCalls = append(p.PostFieldCalls, fieldName)
 
 	// Capture the state of the child at post-hook time
-	if fieldName == "Child" {
+	if fieldName == childFieldName {
 		if child, ok := fieldValue.(*ChildWithHooks); ok {
 			p.PostChildState = &ChildState{
 				Name:       child.Name,
@@ -126,7 +131,7 @@ func TestParentFieldHooks(t *testing.T) {
 	// Check that PreFieldInit was called for Child field
 	found := false
 	for _, call := range parent.PreFieldCalls {
-		if call == "Child" {
+		if call == childFieldName {
 			found = true
 			break
 		}
@@ -138,7 +143,7 @@ func TestParentFieldHooks(t *testing.T) {
 	// Check that PostFieldInit was called for Child field
 	found = false
 	for _, call := range parent.PostFieldCalls {
-		if call == "Child" {
+		if call == childFieldName {
 			found = true
 			break
 		}
@@ -211,11 +216,11 @@ func TestFieldHooksWithPointers(t *testing.T) {
 	}
 
 	// Check hooks were called
-	if len(parent.PreFieldCalls) != 1 || parent.PreFieldCalls[0] != "Child" {
+	if len(parent.PreFieldCalls) != 1 || parent.PreFieldCalls[0] != childFieldName {
 		t.Errorf("PreFieldInit not called correctly: %v", parent.PreFieldCalls)
 	}
 
-	if len(parent.PostFieldCalls) != 1 || parent.PostFieldCalls[0] != "Child" {
+	if len(parent.PostFieldCalls) != 1 || parent.PostFieldCalls[0] != childFieldName {
 		t.Errorf("PostFieldInit not called correctly: %v", parent.PostFieldCalls)
 	}
 
@@ -281,7 +286,7 @@ func TestOnlyPreFieldHook(t *testing.T) {
 	}
 
 	// Check that PreFieldInit was called
-	if len(parent.PreFieldCalls) != 1 || parent.PreFieldCalls[0] != "Child" {
+	if len(parent.PreFieldCalls) != 1 || parent.PreFieldCalls[0] != childFieldName {
 		t.Errorf("PreFieldInit not called correctly: %v", parent.PreFieldCalls)
 	}
 
@@ -313,7 +318,7 @@ func TestOnlyPostFieldHook(t *testing.T) {
 	}
 
 	// Check that PostFieldInit was called
-	if len(parent.PostFieldCalls) != 1 || parent.PostFieldCalls[0] != "Child" {
+	if len(parent.PostFieldCalls) != 1 || parent.PostFieldCalls[0] != childFieldName {
 		t.Errorf("PostFieldInit not called correctly: %v", parent.PostFieldCalls)
 	}
 
@@ -362,7 +367,7 @@ func TestNestedHooks(t *testing.T) {
 	// Parent hooks should be called for Child field
 	found := false
 	for _, call := range grandParent.Parent.PreFieldCalls {
-		if call == "Child" {
+		if call == childFieldName {
 			found = true
 			break
 		}
@@ -373,7 +378,7 @@ func TestNestedHooks(t *testing.T) {
 
 	found = false
 	for _, call := range grandParent.Parent.PostFieldCalls {
-		if call == "Child" {
+		if call == childFieldName {
 			found = true
 			break
 		}

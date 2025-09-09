@@ -10,7 +10,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/telnet2/autoinit"
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // Configuration structs that will be populated from YAML
@@ -246,7 +246,7 @@ func (app *MicroserviceApp) PostInit(ctx context.Context) error {
 	fmt.Printf("🎛️  Feature flags: ")
 
 	// Sort features for deterministic output
-	var features []string
+	features := make([]string, 0, len(app.Config.Features))
 	for feature := range app.Config.Features {
 		features = append(features, feature)
 	}

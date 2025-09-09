@@ -9,6 +9,10 @@ import (
 	"github.com/telnet2/autoinit"
 )
 
+const (
+	runningStatus = "running"
+)
+
 // MicroService represents a microservice
 type MicroService struct {
 	Name   string
@@ -16,7 +20,7 @@ type MicroService struct {
 }
 
 func (s *MicroService) Init(ctx context.Context) error {
-	s.Status = "running"
+	s.Status = runningStatus
 	return nil
 }
 
@@ -62,7 +66,7 @@ func (m *ServiceManager) PostFieldInit(ctx context.Context, fieldName string, fi
 		if services, ok := fieldValue.(*map[string]*MicroService); ok {
 			running := 0
 			for _, svc := range *services {
-				if svc.Status == "running" {
+				if svc.Status == runningStatus {
 					running++
 				}
 			}
@@ -73,7 +77,7 @@ func (m *ServiceManager) PostFieldInit(ctx context.Context, fieldName string, fi
 		if backups, ok := fieldValue.(*[]*MicroService); ok {
 			running := 0
 			for _, svc := range *backups {
-				if svc != nil && svc.Status == "running" {
+				if svc != nil && svc.Status == runningStatus {
 					running++
 				}
 			}
