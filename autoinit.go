@@ -70,6 +70,15 @@ func defaultLogger() zerolog.Logger {
 	return zerolog.New(os.Stdout).With().Timestamp().Logger().Level(zerolog.TraceLevel)
 }
 
+// getParentChain retrieves the parent chain from context
+func getParentChain(ctx context.Context) *ParentChain {
+	if ctx == nil {
+		return nil
+	}
+	chain, _ := ctx.Value(parentChainKey).(*ParentChain)
+	return chain
+}
+
 // AutoInit recursively discovers and initializes all components in a struct tree.
 // A component is any struct that implements one of the Initializer interfaces.
 // Components are initialized depth-first in declaration order, enabling plug-and-play
@@ -122,6 +131,11 @@ func AutoInitWithOptions(ctx context.Context, target interface{}, options *Optio
 	var visited map[uintptr]bool
 	if options == nil || !options.DisableCycleDetection {
 		visited = make(map[uintptr]bool)
+	}
+	
+	// Add parent chain to context if not already present
+	if getParentChain(ctx) == nil {
+		ctx = WithComponentSearch(ctx)
 	}
 	
 	// Start recursive initialization with no parent (empty reflect.Value)
@@ -206,6 +220,19 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 		Msg("Processing struct")
 	
 	t := v.Type()
+	
+	// Maintain parent chain for component search
+	if chain := getParentChain(ctx); chain != nil {
+		// Get the interface value for this struct
+		var structInterface interface{}
+		if v.CanAddr() {
+			structInterface = v.Addr().Interface()
+		} else {
+			structInterface = v.Interface()
+		}
+		chain.Push(structInterface)
+		defer chain.Pop()
+	}
 	
 	// Call PreInit hook if this struct implements it
 	if err := callPreInit(ctx, v, path, logger); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog"
 	"github.com/user/autoinit"
 )
 
@@ -26,8 +27,8 @@ type PluggableApp struct {
 
 	// Pluggable components - just add them to enable features!
 	Auth      *AuthComponent      // Add authentication
-	Metrics   *MetricsComponent   // Add metrics collection
 	Cache     *CacheComponent     // Add caching
+	Metrics   *MetricsComponent   // Add metrics collection
 	RateLimit *RateLimitComponent // Add rate limiting
 }
 
@@ -90,14 +91,17 @@ func Example_plugAndPlay() {
 	}
 
 	// Plug in components as needed - no code changes required!
-	app.Auth = &AuthComponent{}        // Just add authentication
-	app.Metrics = &MetricsComponent{}  // Just add metrics
+	app.Auth = &AuthComponent{}      // Just add authentication
+	app.Metrics = &MetricsComponent{} // Just add metrics
 	// app.Cache = &CacheComponent{}   // Commented out - not needed yet
 	// app.RateLimit = ...              // Can add later when needed
 
 	// One initialization call handles everything
 	ctx := context.Background()
-	if err := autoinit.AutoInit(ctx, app); err != nil {
+	// Use a silent logger for examples to avoid trace output
+	logger := zerolog.Nop()
+	options := &autoinit.Options{Logger: &logger}
+	if err := autoinit.AutoInitWithOptions(ctx, app, options); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
@@ -132,7 +136,10 @@ func Example_dynamicComponents() {
 
 	// Single initialization point - works regardless of which components are plugged in
 	ctx := context.Background()
-	if err := autoinit.AutoInit(ctx, app); err != nil {
+	// Use a silent logger for examples to avoid trace output
+	logger := zerolog.Nop()
+	options := &autoinit.Options{Logger: &logger}
+	if err := autoinit.AutoInitWithOptions(ctx, app, options); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
@@ -143,8 +150,8 @@ func Example_dynamicComponents() {
 	// Core system started
 	// Authentication enabled
 	// Cache initialized
-	// Rate limiting activated
 	// Metrics collection started
+	// Rate limiting activated
 	// Application initialized with selected components
 }
 
