@@ -1,0 +1,109 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  
+  gocyclo:
+    min-complexity: 15
+  
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # Can be too strict for some cases
+  
+  staticcheck:
+    checks: ["all"]
+  
+  unused:
+    check-exported: false
+  
+  misspell:
+    locale: US
+  
+  goimports:
+    local-prefixes: github.com/telnet2/autoinit
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+
+  revive:
+    rules:
+      - name: exported
+        arguments: [checkPrivateReceivers, sayRepetitiveInsteadOfStutters]
+
+linters:
+  enable:
+    - bodyclose
+    - dogsled
+    - dupl
+    - errcheck
+    - exportloopref
+    - exhaustive
+    - goconst
+    - gocritic
+    - gofmt
+    - goimports
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - stylecheck
+    - thelper
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gomnd
+        - gocritic
+        - gosec
+    
+    - path: examples/
+      linters:
+        - gomnd
+        - gocritic
+    
+    - linters:
+        - staticcheck
+      text: "SA9003:"
+    
+    # Exclude some lints from being reported on test files
+    - path: _test\.go
+      text: "should not use dot imports"
+      linters:
+        - revive
+  
+  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
+  max-issues-per-linter: 0
+  
+  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
+  max-same-issues: 0

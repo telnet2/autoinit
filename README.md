@@ -6,10 +6,12 @@
 
 *Build applications by composing self-contained components that initialize themselves*
 
-[![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.19-blue.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.20-blue.svg)](https://golang.org/)
+[![CI](https://github.com/telnet2/autoinit/workflows/Tests/badge.svg)](https://github.com/telnet2/autoinit/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Test Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen.svg)]()
 [![Go Report Card](https://goreportcard.com/badge/github.com/telnet2/autoinit)](https://goreportcard.com/report/github.com/telnet2/autoinit)
+[![Codecov](https://codecov.io/gh/telnet2/autoinit/branch/main/graph/badge.svg)](https://codecov.io/gh/telnet2/autoinit)
 
 ---
 
@@ -700,6 +702,69 @@ git clone https://github.com/telnet2/autoinit.git
 cd autoinit
 go mod tidy
 go test ./...
+```
+
+## 🛠️ Development & CI/CD
+
+### Local Development
+
+AutoInit includes comprehensive tooling for development and testing:
+
+```bash
+# Run all tests
+make test
+
+# Run tests with race detection
+make test-race
+
+# Run tests with coverage
+make test-cover
+
+# Run benchmarks
+make bench
+
+# Run all quality checks
+make lint
+
+# Simulate CI locally
+make ci
+
+# Set up development environment
+make dev-setup
+```
+
+### Continuous Integration
+
+The project uses GitHub Actions for comprehensive CI/CD:
+
+- **Multi-Version Testing**: Go 1.20, 1.21, 1.22
+- **Code Quality**: golangci-lint, staticcheck, gosec
+- **Race Detection**: All tests run with race detector
+- **Security Scanning**: Automated security vulnerability detection
+- **Coverage Reporting**: Codecov integration
+- **Benchmarking**: Performance regression detection
+
+**Quality Gates:**
+- ✅ All tests pass
+- ✅ 95%+ test coverage
+- ✅ Zero linting issues  
+- ✅ No race conditions
+- ✅ Security scan passes
+- ✅ Builds successfully
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes with tests
+4. Run `make ci` to ensure all checks pass
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+**Pre-commit Hook:**
+```bash
+make install-hooks  # Install git pre-commit hook
 ```
 
 ## 🎉 Community & Support
