@@ -15,7 +15,7 @@ type DataProvider interface {
 
 // Value component that implements DataProvider
 type ValueComponent struct {
-	Name       string
+	Name        string
 	Initialized bool
 }
 
@@ -30,7 +30,7 @@ func (v *ValueComponent) GetData() string {
 
 // Pointer component that implements DataProvider
 type PointerComponent struct {
-	Name       string
+	Name        string
 	Initialized bool
 }
 
@@ -53,35 +53,35 @@ type SearcherComponent struct {
 
 func (s *SearcherComponent) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, s, parent)
-	
+
 	// Try to find value component (should get pointer to it)
 	if val := finder.Find(autoinit.SearchOption{
 		ByType: reflect.TypeOf((*ValueComponent)(nil)),
 	}); val != nil {
 		s.foundValue = val.(*ValueComponent)
 	}
-	
+
 	// Try to find pointer component
 	if ptr := finder.Find(autoinit.SearchOption{
 		ByType: reflect.TypeOf((*PointerComponent)(nil)),
 	}); ptr != nil {
 		s.foundPointer = ptr.(*PointerComponent)
 	}
-	
+
 	// Try to find by interface
 	if provider := finder.Find(autoinit.SearchOption{
 		ByType: reflect.TypeOf((*DataProvider)(nil)).Elem(),
 	}); provider != nil {
 		s.foundInterface = provider.(DataProvider)
 	}
-	
+
 	// Try to find uninitialized (nil) field
 	if nilField := finder.Find(autoinit.SearchOption{
 		ByFieldName: "UninitializedPtr",
 	}); nilField != nil {
 		s.foundNilField = nilField
 	}
-	
+
 	return nil
 }
 
@@ -91,18 +91,18 @@ func TestFinderValueFieldPointer(t *testing.T) {
 		PointerComp *PointerComponent // Pointer field
 		Searcher    *SearcherComponent
 	}
-	
+
 	app := &App{
 		ValueComp:   ValueComponent{Name: "ValueData"},
 		PointerComp: &PointerComponent{Name: "PointerData"},
 		Searcher:    &SearcherComponent{},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Check if finder found the value component (as a pointer)
 	if app.Searcher.foundValue == nil {
 		t.Error("Should have found ValueComponent")
@@ -115,7 +115,7 @@ func TestFinderValueFieldPointer(t *testing.T) {
 			t.Error("ValueComponent should be initialized")
 		}
 	}
-	
+
 	// Check if finder found the pointer component
 	if app.Searcher.foundPointer == nil {
 		t.Error("Should have found PointerComponent")
@@ -131,22 +131,22 @@ func TestFinderValueFieldPointer(t *testing.T) {
 
 func TestFinderInterfaceSearch(t *testing.T) {
 	type App struct {
-		Provider1 *PointerComponent  // Implements DataProvider
-		Provider2 ValueComponent     // Also implements DataProvider
+		Provider1 *PointerComponent // Implements DataProvider
+		Provider2 ValueComponent    // Also implements DataProvider
 		Searcher  *SearcherComponent
 	}
-	
+
 	app := &App{
 		Provider1: &PointerComponent{Name: "Provider1"},
 		Provider2: ValueComponent{Name: "Provider2"},
 		Searcher:  &SearcherComponent{},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Check if finder found something implementing the interface
 	if app.Searcher.foundInterface == nil {
 		t.Error("Should have found a DataProvider")
@@ -161,27 +161,27 @@ func TestFinderInterfaceSearch(t *testing.T) {
 
 func TestFinderSkipsNilFields(t *testing.T) {
 	type App struct {
-		InitializedComp   *PointerComponent
-		UninitializedPtr  *PointerComponent // nil - should be skipped
-		Searcher          *SearcherComponent
+		InitializedComp  *PointerComponent
+		UninitializedPtr *PointerComponent // nil - should be skipped
+		Searcher         *SearcherComponent
 	}
-	
+
 	app := &App{
 		InitializedComp: &PointerComponent{Name: "Initialized"},
 		// UninitializedPtr is nil
 		Searcher: &SearcherComponent{},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Should not find the nil field
 	if app.Searcher.foundNilField != nil {
 		t.Error("Should not find nil/uninitialized fields")
 	}
-	
+
 	// Should find the initialized field
 	if app.Searcher.foundPointer == nil {
 		t.Error("Should have found the initialized PointerComponent")
@@ -209,22 +209,22 @@ func (m *ModifierComponent) Init(ctx context.Context, parent interface{}) error 
 
 // Test that finder gets pointer to value fields that can be modified
 func TestFinderValueFieldModification(t *testing.T) {
-	
+
 	type App struct {
 		Value    ValueComponent
 		Modifier *ModifierComponent
 	}
-	
+
 	app := &App{
 		Value:    ValueComponent{Name: "Original"},
 		Modifier: &ModifierComponent{},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Check if the modification affected the original
 	if app.Value.Name != "Modified" {
 		t.Errorf("Expected value to be modified, got: %s", app.Value.Name)
@@ -273,37 +273,37 @@ func (c *ConfigSearcher) Init(ctx context.Context, parent interface{}) error {
 	// In real implementation, we'd need to search all fields
 	// For now, let's test if we can find by interface type
 	finder := autoinit.NewComponentFinder(ctx, c, parent)
-	
+
 	// Try to find first ConfigProvider
 	if provider := finder.Find(autoinit.SearchOption{
 		ByType: reflect.TypeOf((*ConfigProvider)(nil)).Elem(),
 	}); provider != nil {
 		c.foundConfigs = append(c.foundConfigs, provider.(ConfigProvider))
 	}
-	
+
 	return nil
 }
 
 // Test finding components by interface with both pointer and value receivers
 func TestFinderInterfaceWithMixedReceivers(t *testing.T) {
-	
+
 	type App struct {
-		ValConfig  ValueConfig
-		PtrConfig  *PointerConfig
-		Searcher   *ConfigSearcher
+		ValConfig ValueConfig
+		PtrConfig *PointerConfig
+		Searcher  *ConfigSearcher
 	}
-	
+
 	app := &App{
 		ValConfig: ValueConfig{},
 		PtrConfig: &PointerConfig{},
 		Searcher:  &ConfigSearcher{},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Should find at least one ConfigProvider
 	if len(app.Searcher.foundConfigs) == 0 {
 		t.Error("Should have found at least one ConfigProvider")

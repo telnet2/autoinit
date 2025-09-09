@@ -8,24 +8,24 @@ import (
 // Test types for tag-based initialization
 type TaggedStruct struct {
 	// Fields with explicit tags
-	InitMe    *SimpleComponent `autoinit:"init"`    // Should initialize
-	AlsoInit  *SimpleComponent `autoinit:""`        // Empty tag also means init
-	SkipMe    *SimpleComponent `autoinit:"-"`       // Explicitly skip
-	
+	InitMe   *SimpleComponent `autoinit:"init"` // Should initialize
+	AlsoInit *SimpleComponent `autoinit:""`     // Empty tag also means init
+	SkipMe   *SimpleComponent `autoinit:"-"`    // Explicitly skip
+
 	// Field without tag
-	NoTag     *SimpleComponent                      // Behavior depends on RequireTags
-	
+	NoTag *SimpleComponent // Behavior depends on RequireTags
+
 	// Test if nested structs respect tags
-	Nested    NestedWithTags  `autoinit:"init"`
-	
+	Nested NestedWithTags `autoinit:"init"`
+
 	// Collections
-	Services  []*SimpleComponent `autoinit:"init"`
-	SkipList  []*SimpleComponent `autoinit:"-"`
+	Services []*SimpleComponent `autoinit:"init"`
+	SkipList []*SimpleComponent `autoinit:"-"`
 }
 
 type NestedWithTags struct {
 	// This field should be initialized when parent is initialized
-	Inner *SimpleComponent
+	Inner       *SimpleComponent
 	Initialized bool
 }
 
@@ -53,14 +53,14 @@ func TestTagsDefaultBehavior(t *testing.T) {
 			{Name: "skip2"},
 		},
 	}
-	
+
 	ctx := context.Background()
 	err := AutoInit(ctx, s)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Check fields with init tags were initialized
 	if !s.InitMe.Initialized {
 		t.Error("InitMe should be initialized")
@@ -68,17 +68,17 @@ func TestTagsDefaultBehavior(t *testing.T) {
 	if !s.AlsoInit.Initialized {
 		t.Error("AlsoInit should be initialized")
 	}
-	
+
 	// Check field with skip tag was NOT initialized
 	if s.SkipMe.Initialized {
 		t.Error("SkipMe should NOT be initialized (has autoinit:\"-\" tag)")
 	}
-	
+
 	// Check field without tag WAS initialized (default behavior)
 	if !s.NoTag.Initialized {
 		t.Error("NoTag should be initialized (default behavior when RequireTags=false)")
 	}
-	
+
 	// Check nested struct was initialized
 	if !s.Nested.Initialized {
 		t.Error("Nested should be initialized")
@@ -86,14 +86,14 @@ func TestTagsDefaultBehavior(t *testing.T) {
 	if !s.Nested.Inner.Initialized {
 		t.Error("Nested.Inner should be initialized")
 	}
-	
+
 	// Check collections
 	for i, svc := range s.Services {
 		if !svc.Initialized {
 			t.Errorf("Services[%d] should be initialized", i)
 		}
 	}
-	
+
 	for i, skip := range s.SkipList {
 		if skip.Initialized {
 			t.Errorf("SkipList[%d] should NOT be initialized (has autoinit:\"-\" tag)", i)
@@ -120,17 +120,17 @@ func TestRequireTagsBehavior(t *testing.T) {
 			{Name: "skip2"},
 		},
 	}
-	
+
 	ctx := context.Background()
 	options := &Options{
 		RequireTags: true,
 	}
 	err := AutoInitWithOptions(ctx, s, options)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Check fields with init tags were initialized
 	if !s.InitMe.Initialized {
 		t.Error("InitMe should be initialized (has autoinit tag)")
@@ -138,17 +138,17 @@ func TestRequireTagsBehavior(t *testing.T) {
 	if !s.AlsoInit.Initialized {
 		t.Error("AlsoInit should be initialized (has empty autoinit tag)")
 	}
-	
+
 	// Check field with skip tag was NOT initialized
 	if s.SkipMe.Initialized {
 		t.Error("SkipMe should NOT be initialized (has autoinit:\"-\" tag)")
 	}
-	
+
 	// Check field without tag was NOT initialized (RequireTags=true)
 	if s.NoTag.Initialized {
 		t.Error("NoTag should NOT be initialized (no tag with RequireTags=true)")
 	}
-	
+
 	// Check nested struct was initialized (parent has tag)
 	if !s.Nested.Initialized {
 		t.Error("Nested should be initialized (has autoinit tag)")
@@ -157,14 +157,14 @@ func TestRequireTagsBehavior(t *testing.T) {
 	if s.Nested.Inner.Initialized {
 		t.Error("Nested.Inner should NOT be initialized (no tag with RequireTags=true)")
 	}
-	
+
 	// Check collections
 	for i, svc := range s.Services {
 		if !svc.Initialized {
 			t.Errorf("Services[%d] should be initialized (field has tag)", i)
 		}
 	}
-	
+
 	for i, skip := range s.SkipList {
 		if skip.Initialized {
 			t.Errorf("SkipList[%d] should NOT be initialized (has autoinit:\"-\" tag)", i)
@@ -204,22 +204,22 @@ func TestMixedTagsWithRequireTags(t *testing.T) {
 		Tagged:   TaggedChild{Value: "tagged"},
 		Untagged: UntaggedChild{Value: "untagged"},
 	}
-	
+
 	ctx := context.Background()
 	options := &Options{
 		RequireTags: true,
 	}
 	err := AutoInitWithOptions(ctx, parent, options)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Tagged child should be initialized
 	if !parent.Tagged.Initialized {
 		t.Error("Tagged child should be initialized")
 	}
-	
+
 	// Untagged child should NOT be initialized when RequireTags=true
 	if parent.Untagged.Initialized {
 		t.Error("Untagged child should NOT be initialized with RequireTags=true")
@@ -236,7 +236,7 @@ type ChildWithMixedFields struct {
 	// because the parent field has a tag
 	Service1 *SimpleComponent
 	Service2 *SimpleComponent
-	
+
 	Initialized bool
 }
 
@@ -252,22 +252,22 @@ func TestNestedFieldsWithParentTag(t *testing.T) {
 			Service2: &SimpleComponent{Name: "svc2"},
 		},
 	}
-	
+
 	ctx := context.Background()
 	options := &Options{
 		RequireTags: true,
 	}
 	err := AutoInitWithOptions(ctx, parent, options)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Child should be initialized (has tag)
 	if !parent.Child.Initialized {
 		t.Error("Child should be initialized")
 	}
-	
+
 	// Child's fields won't be initialized because they don't have tags
 	// and RequireTags applies throughout the tree
 	if parent.Child.Service1.Initialized {

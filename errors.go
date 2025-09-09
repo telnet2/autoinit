@@ -17,7 +17,7 @@ func (e *InitError) Error() string {
 	if len(e.Path) == 0 {
 		return fmt.Sprintf("failed to initialize %s: %v", e.FieldType, e.Cause)
 	}
-	
+
 	pathStr := strings.Join(e.Path, ".")
 	return fmt.Sprintf("failed to initialize field '%s' of type %s: %v", pathStr, e.FieldType, e.Cause)
 }

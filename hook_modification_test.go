@@ -62,14 +62,14 @@ func TestHooksCanModifyFields(t *testing.T) {
 	parent := &ParentThatModifies{
 		Child2: &ModifiableChild{},
 	}
-	
+
 	ctx := context.Background()
 	err := AutoInit(ctx, parent)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Check Child1 (value field)
 	if parent.Child1.Name != "Modified by parent (pre) (post)" {
 		t.Errorf("Child1.Name = %q; want %q", parent.Child1.Name, "Modified by parent (pre) (post)")
@@ -77,7 +77,7 @@ func TestHooksCanModifyFields(t *testing.T) {
 	if parent.Child1.Value != 101 {
 		t.Errorf("Child1.Value = %d; want %d", parent.Child1.Value, 101)
 	}
-	
+
 	// Check Child2 (pointer field)
 	if parent.Child2.Name != "Pointer modified by parent (pre) (post)" {
 		t.Errorf("Child2.Name = %q; want %q", parent.Child2.Name, "Pointer modified by parent (pre) (post)")
@@ -135,14 +135,14 @@ func (p *ParentWithStatefulChild) PostFieldInit(ctx context.Context, fieldName s
 
 func TestHookTiming(t *testing.T) {
 	parent := &ParentWithStatefulChild{}
-	
+
 	ctx := context.Background()
 	err := AutoInit(ctx, parent)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !parent.Child.Prepared {
 		t.Error("Child.Prepared should be true")
 	}

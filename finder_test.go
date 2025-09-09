@@ -20,9 +20,9 @@ func (l *FinderLogger) Init(ctx context.Context) error {
 }
 
 type FinderCache struct {
-	Name     string
-	Ready    bool
-	logger   *FinderLogger
+	Name   string
+	Ready  bool
+	logger *FinderLogger
 }
 
 func (c *FinderCache) Init(ctx context.Context, parent interface{}) error {
@@ -46,21 +46,21 @@ type FinderDatabase struct {
 
 func (d *FinderDatabase) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, d, parent)
-	
+
 	// Find logger by field name
 	if logger := finder.Find(autoinit.SearchOption{
 		ByFieldName: "Logger",
 	}); logger != nil {
 		d.logger = logger.(*FinderLogger)
 	}
-	
+
 	// Find cache by JSON tag
 	if cache := finder.Find(autoinit.SearchOption{
 		ByJSONTag: "cache",
 	}); cache != nil {
 		d.cache = cache.(*FinderCache)
 	}
-	
+
 	d.Connected = true
 	return nil
 }
@@ -76,26 +76,26 @@ type FinderService struct {
 
 func (s *FinderService) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, s, parent)
-	
+
 	// Should find these at various levels in the hierarchy
 	if logger := finder.Find(autoinit.SearchOption{
 		ByType: reflect.TypeOf((*FinderLogger)(nil)),
 	}); logger != nil {
 		s.logger = logger.(*FinderLogger)
 	}
-	
+
 	if cache := finder.Find(autoinit.SearchOption{
 		ByType: reflect.TypeOf((*FinderCache)(nil)),
 	}); cache != nil {
 		s.cache = cache.(*FinderCache)
 	}
-	
+
 	if db := finder.Find(autoinit.SearchOption{
 		ByType: reflect.TypeOf((*FinderDatabase)(nil)),
 	}); db != nil {
 		s.db = db.(*FinderDatabase)
 	}
-	
+
 	s.Active = true
 	return nil
 }
@@ -107,29 +107,29 @@ func TestFinderSiblingSearch(t *testing.T) {
 		Cache    *FinderCache    `json:"cache"`
 		Database *FinderDatabase `json:"db"`
 	}
-	
+
 	app := &App{
 		Logger:   &FinderLogger{Name: "AppLogger"},
 		Cache:    &FinderCache{Name: "AppCache"},
 		Database: &FinderDatabase{Name: "AppDB"},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Verify components found their siblings
 	if app.Cache.logger == nil {
 		t.Error("Cache should have found Logger sibling")
 	} else if app.Cache.logger != app.Logger {
 		t.Error("Cache should have found the correct Logger")
 	}
-	
+
 	if app.Database.logger == nil {
 		t.Error("Database should have found Logger sibling")
 	}
-	
+
 	if app.Database.cache == nil {
 		t.Error("Database should have found Cache sibling")
 	} else if app.Database.cache != app.Cache {
@@ -142,19 +142,19 @@ func TestFinderHierarchicalSearch(t *testing.T) {
 	type Module struct {
 		Service *FinderService
 	}
-	
+
 	type Subsystem struct {
 		LocalCache *FinderCache // Might be nil initially
 		Module     *Module
 	}
-	
+
 	type System struct {
 		GlobalLogger *FinderLogger
 		GlobalCache  *FinderCache
 		Database     *FinderDatabase
 		Subsystem    *Subsystem
 	}
-	
+
 	system := &System{
 		GlobalLogger: &FinderLogger{Name: "GlobalLogger"},
 		GlobalCache:  &FinderCache{Name: "GlobalCache"},
@@ -166,27 +166,27 @@ func TestFinderHierarchicalSearch(t *testing.T) {
 			},
 		},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, system); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	service := system.Subsystem.Module.Service
-	
+
 	// Service should find components at the system level
 	if service.logger == nil {
 		t.Error("Service should have found Logger at system level")
 	} else if service.logger != system.GlobalLogger {
 		t.Error("Service should have found the GlobalLogger")
 	}
-	
+
 	if service.cache == nil {
 		t.Error("Service should have found Cache at system level")
 	} else if service.cache != system.GlobalCache {
 		t.Error("Service should have found the GlobalCache")
 	}
-	
+
 	if service.db == nil {
 		t.Error("Service should have found Database at system level")
 	} else if service.db != system.Database {
@@ -199,17 +199,17 @@ func TestFinderWithLocalOverride(t *testing.T) {
 	type Module struct {
 		Service *FinderService
 	}
-	
+
 	type Subsystem struct {
 		LocalCache *FinderCache // Local override
 		Module     *Module
 	}
-	
+
 	type System struct {
 		GlobalCache *FinderCache
 		Subsystem   *Subsystem
 	}
-	
+
 	system := &System{
 		GlobalCache: &FinderCache{Name: "GlobalCache"},
 		Subsystem: &Subsystem{
@@ -219,14 +219,14 @@ func TestFinderWithLocalOverride(t *testing.T) {
 			},
 		},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, system); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	service := system.Subsystem.Module.Service
-	
+
 	// Service should find the local cache, not the global one
 	if service.cache == nil {
 		t.Error("Service should have found Cache")
@@ -257,29 +257,29 @@ func TestFinderByFieldName(t *testing.T) {
 		SecondaryLogger *FinderLogger
 		Service         *FinderService
 	}
-	
+
 	app := &App{
 		PrimaryLogger:   &FinderLogger{Name: "Primary"},
 		SecondaryLogger: &FinderLogger{Name: "Secondary"},
 		Service:         &FinderService{Name: "Service"},
 	}
-	
+
 	// Add custom service to test
 	type TestApp struct {
 		App
 		Custom *CustomService
 	}
-	
+
 	testApp := &TestApp{
 		App:    *app,
 		Custom: &CustomService{Name: "Custom"},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, testApp); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Custom service should have found the primary logger
 	if testApp.Custom.primary == nil {
 		t.Error("CustomService should have found PrimaryLogger")
@@ -296,7 +296,7 @@ type TaggedService struct {
 
 func (ts *TaggedService) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, ts, parent)
-	
+
 	// Find main cache
 	if cache := finder.Find(autoinit.SearchOption{
 		ByCustomTag: "main",
@@ -304,7 +304,7 @@ func (ts *TaggedService) Init(ctx context.Context, parent interface{}) error {
 	}); cache != nil {
 		ts.main = cache.(*FinderCache)
 	}
-	
+
 	// Find fallback cache
 	if cache := finder.Find(autoinit.SearchOption{
 		ByCustomTag: "fallback",
@@ -312,22 +312,22 @@ func (ts *TaggedService) Init(ctx context.Context, parent interface{}) error {
 	}); cache != nil {
 		ts.fallback = cache.(*FinderCache)
 	}
-	
+
 	return nil
 }
 
 func TestFinderWithCustomTags(t *testing.T) {
 	type App struct {
-		MainCache      *FinderCache `component:"main"`
-		FallbackCache  *FinderCache `component:"fallback"`
-		TempCache      *FinderCache `component:"temp"`
+		MainCache     *FinderCache `component:"main"`
+		FallbackCache *FinderCache `component:"fallback"`
+		TempCache     *FinderCache `component:"temp"`
 	}
-	
+
 	type TestApp struct {
 		App
 		Service *TaggedService
 	}
-	
+
 	app := &TestApp{
 		App: App{
 			MainCache:     &FinderCache{Name: "Main"},
@@ -336,17 +336,17 @@ func TestFinderWithCustomTags(t *testing.T) {
 		},
 		Service: &TaggedService{},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Service should have found tagged caches
 	if app.Service.main != app.MainCache {
 		t.Error("Service should have found main cache")
 	}
-	
+
 	if app.Service.fallback != app.FallbackCache {
 		t.Error("Service should have found fallback cache")
 	}
@@ -361,12 +361,12 @@ type HelperService struct {
 func (h *HelperService) Init(ctx context.Context, parent interface{}) error {
 	// Use generic helper
 	h.logger = autoinit.FindByType[*FinderLogger](ctx, h, parent)
-	
+
 	// Use name helper
 	if cache := autoinit.FindByName(ctx, h, parent, "Cache"); cache != nil {
 		h.cache = cache.(*FinderCache)
 	}
-	
+
 	return nil
 }
 
@@ -377,12 +377,12 @@ func TestFinderHelperFunctions(t *testing.T) {
 		Cache   *FinderCache
 		Service *FinderService
 	}
-	
+
 	type TestApp struct {
 		App
 		Helper *HelperService
 	}
-	
+
 	app := &TestApp{
 		App: App{
 			Logger:  &FinderLogger{Name: "Logger"},
@@ -391,17 +391,17 @@ func TestFinderHelperFunctions(t *testing.T) {
 		},
 		Helper: &HelperService{},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Helper service should have found components
 	if app.Helper.logger != app.Logger {
 		t.Error("Helper should have found logger using FindByType")
 	}
-	
+
 	if app.Helper.cache != app.Cache {
 		t.Error("Helper should have found cache using FindByName")
 	}
@@ -414,7 +414,7 @@ func TestFinderWithCollections(t *testing.T) {
 		CacheMap map[string]*FinderCache
 		Service  *FinderService
 	}
-	
+
 	app := &App{
 		Loggers: []*FinderLogger{
 			{Name: "Logger1"},
@@ -426,17 +426,17 @@ func TestFinderWithCollections(t *testing.T) {
 		},
 		Service: &FinderService{Name: "Service"},
 	}
-	
+
 	ctx := autoinit.WithComponentSearch(context.Background())
 	if err := autoinit.AutoInit(ctx, app); err != nil {
 		t.Fatalf("AutoInit failed: %v", err)
 	}
-	
+
 	// Service should find components in collections
 	if app.Service.logger == nil {
 		t.Error("Service should have found a logger from the slice")
 	}
-	
+
 	if app.Service.cache == nil {
 		t.Error("Service should have found a cache from the map")
 	}

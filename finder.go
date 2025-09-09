@@ -369,13 +369,13 @@ func FindByType[T any](ctx context.Context, self interface{}, parent interface{}
 func FindByInterface[T any](ctx context.Context, self interface{}, parent interface{}) T {
 	var zero T
 	finder := NewComponentFinder(ctx, self, parent)
-	
+
 	// Get the interface type
 	interfaceType := reflect.TypeOf((*T)(nil)).Elem()
 	if interfaceType.Kind() != reflect.Interface {
 		return zero
 	}
-	
+
 	result := finder.Find(SearchOption{
 		ByType: interfaceType,
 	})

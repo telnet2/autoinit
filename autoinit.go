@@ -103,17 +103,17 @@ func AutoInitWithOptions(ctx context.Context, target interface{}, options *Optio
 	} else {
 		logger = defaultLogger()
 	}
-	
+
 	logger.Trace().
 		Str("target_type", fmt.Sprintf("%T", target)).
 		Msg("Starting AutoInit")
-	
+
 	if target == nil {
 		return fmt.Errorf("cannot initialize nil target")
 	}
 
 	v := reflect.ValueOf(target)
-	
+
 	// If it's a pointer, get the element
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
@@ -121,26 +121,26 @@ func AutoInitWithOptions(ctx context.Context, target interface{}, options *Optio
 		}
 		v = v.Elem()
 	}
-	
+
 	// Must be a struct
 	if v.Kind() != reflect.Struct {
 		return fmt.Errorf("target must be a struct or pointer to struct, got %s", v.Kind())
 	}
-	
+
 	// Create visited map for cycle detection (unless disabled)
 	var visited map[uintptr]bool
 	if options == nil || !options.DisableCycleDetection {
 		visited = make(map[uintptr]bool)
 	}
-	
+
 	// Add parent chain to context if not already present
 	if getParentChain(ctx) == nil {
 		ctx = WithComponentSearch(ctx)
 	}
-	
+
 	// Start recursive initialization with no parent (empty reflect.Value)
 	err := initStructWithVisited(ctx, v, reflect.Value{}, []string{}, logger, visited, options)
-	
+
 	if err != nil {
 		logger.Error().
 			Err(err).
@@ -149,7 +149,7 @@ func AutoInitWithOptions(ctx context.Context, target interface{}, options *Optio
 		logger.Trace().
 			Msg("AutoInit completed successfully")
 	}
-	
+
 	return err
 }
 
@@ -179,7 +179,7 @@ func initStruct(ctx context.Context, v reflect.Value, parent reflect.Value, path
 // enabling proper dependency order.
 func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger zerolog.Logger, visited map[uintptr]bool, options *Options) error {
 	pathStr := pathToString(path)
-	
+
 	// Handle pointer to struct
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
@@ -188,7 +188,7 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 				Msg("Skipping nil pointer")
 			return nil // Skip nil pointers
 		}
-		
+
 		// Check for cycles if cycle detection is enabled
 		if visited != nil {
 			ptr := v.Pointer()
@@ -201,10 +201,10 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 			// Mark as visited
 			visited[ptr] = true
 		}
-		
+
 		v = v.Elem()
 	}
-	
+
 	// Only process structs
 	if v.Kind() != reflect.Struct {
 		logger.Trace().
@@ -213,14 +213,14 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 			Msg("Skipping non-struct field")
 		return nil
 	}
-	
+
 	logger.Trace().
 		Str("path", pathStr).
 		Str("type", v.Type().String()).
 		Msg("Processing struct")
-	
+
 	t := v.Type()
-	
+
 	// Maintain parent chain for component search
 	if chain := getParentChain(ctx); chain != nil {
 		// Get the interface value for this struct
@@ -233,17 +233,17 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 		chain.Push(structInterface)
 		defer chain.Pop()
 	}
-	
+
 	// Call PreInit hook if this struct implements it
 	if err := callPreInit(ctx, v, path, logger); err != nil {
 		return err
 	}
-	
+
 	// First, recursively initialize all fields
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldType := t.Field(i)
-		
+
 		// Skip unexported fields
 		if !field.CanInterface() {
 			logger.Trace().
@@ -252,7 +252,7 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 				Msg("Skipping unexported field")
 			continue
 		}
-		
+
 		// Check autoinit tag if RequireTags is enabled
 		tag := fieldType.Tag.Get("autoinit")
 		if tag == "-" {
@@ -263,7 +263,7 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 				Msg("Skipping field with autoinit:\"-\" tag")
 			continue
 		}
-		
+
 		if options != nil && options.RequireTags {
 			// When RequireTags is true, only process fields with autoinit tag
 			// (empty tag "" or specific values like "init" are OK)
@@ -275,17 +275,17 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 				continue
 			}
 		}
-		
+
 		// Create path for error reporting
 		fieldPath := append(path, fieldType.Name)
 		fieldPathStr := pathToString(fieldPath)
-		
+
 		logger.Trace().
 			Str("path", fieldPathStr).
 			Str("type", field.Type().String()).
 			Str("kind", field.Kind().String()).
 			Msg("Traversing field")
-		
+
 		// Handle different field types
 		switch field.Kind() {
 		case reflect.Struct:
@@ -293,47 +293,47 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 			if err := callPreFieldHook(ctx, v, fieldType.Name, field, logger); err != nil {
 				return err
 			}
-			
+
 			// Recurse into struct fields with current struct as parent
 			if err := initStructWithVisited(ctx, field, v, fieldPath, logger, visited, options); err != nil {
 				return err
 			}
-			
+
 			// Call parent's PostFieldInit hook if it exists
 			if err := callPostFieldHook(ctx, v, fieldType.Name, field, logger); err != nil {
 				return err
 			}
-			
+
 		case reflect.Ptr:
 			if !field.IsNil() && field.Elem().Kind() == reflect.Struct {
 				// Call parent's PreFieldInit hook if it exists
 				if err := callPreFieldHook(ctx, v, fieldType.Name, field, logger); err != nil {
 					return err
 				}
-				
+
 				// Recurse into pointer to struct with current struct as parent
 				if err := initStructWithVisited(ctx, field, v, fieldPath, logger, visited, options); err != nil {
 					return err
 				}
-				
+
 				// Call parent's PostFieldInit hook if it exists
 				if err := callPostFieldHook(ctx, v, fieldType.Name, field, logger); err != nil {
 					return err
 				}
 			}
-			
+
 		case reflect.Slice, reflect.Array:
 			// Check if this collection contains structs or pointers to structs
 			hasInitializableElements := false
 			if field.Len() > 0 {
 				elemType := field.Type().Elem()
-				if elemType.Kind() == reflect.Struct || 
-				   (elemType.Kind() == reflect.Ptr && elemType.Elem().Kind() == reflect.Struct) ||
-				   elemType.Kind() == reflect.Interface {
+				if elemType.Kind() == reflect.Struct ||
+					(elemType.Kind() == reflect.Ptr && elemType.Elem().Kind() == reflect.Struct) ||
+					elemType.Kind() == reflect.Interface {
 					hasInitializableElements = true
 				}
 			}
-			
+
 			// Only call hooks if the collection contains initializable types
 			if hasInitializableElements {
 				// Call parent's PreFieldInit hook for the collection itself
@@ -341,7 +341,7 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 					return err
 				}
 			}
-			
+
 			// Initialize each element if it's a struct
 			for j := 0; j < field.Len(); j++ {
 				elem := field.Index(j)
@@ -350,7 +350,7 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 					return err
 				}
 			}
-			
+
 			// Only call hooks if the collection contains initializable types
 			if hasInitializableElements {
 				// Call parent's PostFieldInit hook for the collection itself
@@ -358,17 +358,17 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 					return err
 				}
 			}
-			
+
 		case reflect.Map:
 			// Check if this map contains structs or pointers to structs
 			hasInitializableElements := false
 			valueType := field.Type().Elem()
-			if valueType.Kind() == reflect.Struct || 
-			   (valueType.Kind() == reflect.Ptr && valueType.Elem().Kind() == reflect.Struct) ||
-			   valueType.Kind() == reflect.Interface {
+			if valueType.Kind() == reflect.Struct ||
+				(valueType.Kind() == reflect.Ptr && valueType.Elem().Kind() == reflect.Struct) ||
+				valueType.Kind() == reflect.Interface {
 				hasInitializableElements = true
 			}
-			
+
 			// Only call hooks if the map contains initializable types
 			if hasInitializableElements {
 				// Call parent's PreFieldInit hook for the map itself
@@ -376,12 +376,12 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 					return err
 				}
 			}
-			
+
 			// Initialize each map value if it's a struct
 			for _, key := range field.MapKeys() {
 				elem := field.MapIndex(key)
 				elemPath := append(fieldPath, fmt.Sprintf("[%v]", key))
-				
+
 				// Map values are not addressable, so we need to handle them specially
 				if elem.Kind() == reflect.Struct {
 					// For struct values in maps, we need to create a new value,
@@ -399,7 +399,7 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 					}
 				}
 			}
-			
+
 			// Only call hooks if the map contains initializable types
 			if hasInitializableElements {
 				// Call parent's PostFieldInit hook for the map itself
@@ -409,20 +409,19 @@ func initStructWithVisited(ctx context.Context, v reflect.Value, parent reflect.
 			}
 		}
 	}
-	
+
 	// After initializing all fields, check if this struct itself has Init() method
 	if err := callInitIfExists(ctx, v, parent, path, logger); err != nil {
 		return err
 	}
-	
+
 	// Call PostInit hook if this struct implements it
 	if err := callPostInit(ctx, v, path, logger); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
-
 
 // initValue handles initialization of a reflect.Value that might be a struct
 func initValue(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger zerolog.Logger) error {
@@ -430,12 +429,12 @@ func initValue(ctx context.Context, v reflect.Value, parent reflect.Value, path 
 	if v.Kind() == reflect.Interface && !v.IsNil() {
 		v = v.Elem()
 	}
-	
+
 	// Only initialize structs
 	if v.Kind() == reflect.Struct || (v.Kind() == reflect.Ptr && !v.IsNil() && v.Elem().Kind() == reflect.Struct) {
 		return initStruct(ctx, v, parent, path, logger)
 	}
-	
+
 	return nil
 }
 
@@ -443,13 +442,13 @@ func initValue(ctx context.Context, v reflect.Value, parent reflect.Value, path 
 // Priority order: Init(ctx, parent) > Init(ctx) > Init()
 func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value, path []string, logger zerolog.Logger) error {
 	pathStr := pathToString(path)
-	
+
 	// Get a pointer to the value if it's not already a pointer
 	ptr := v
 	if v.Kind() != reflect.Ptr && v.CanAddr() {
 		ptr = v.Addr()
 	}
-	
+
 	// Prepare parent interface{} if parent is valid
 	var parentInterface interface{}
 	if parent.IsValid() && parent.CanInterface() {
@@ -461,7 +460,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			parentInterface = parent.Interface()
 		}
 	}
-	
+
 	// Check for Init(ctx, parent) - highest priority
 	if initializer, ok := ptr.Interface().(ParentInitializer); ok {
 		logger.Trace().
@@ -469,7 +468,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			Str("type", ptr.Type().String()).
 			Str("method", "Init(ctx, parent)").
 			Msg("Calling initializer")
-		
+
 		if err := initializer.Init(ctx, parentInterface); err != nil {
 			logger.Error().
 				Str("path", pathStr).
@@ -486,7 +485,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			Msg("Init(ctx, parent) completed successfully")
 		return nil
 	}
-	
+
 	// Check for Init(ctx) - second priority
 	if initializer, ok := ptr.Interface().(ContextInitializer); ok {
 		logger.Trace().
@@ -494,7 +493,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			Str("type", ptr.Type().String()).
 			Str("method", "Init(ctx)").
 			Msg("Calling initializer")
-		
+
 		if err := initializer.Init(ctx); err != nil {
 			logger.Error().
 				Str("path", pathStr).
@@ -511,7 +510,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			Msg("Init(ctx) completed successfully")
 		return nil
 	}
-	
+
 	// Check for Init() - lowest priority
 	if initializer, ok := ptr.Interface().(SimpleInitializer); ok {
 		logger.Trace().
@@ -519,7 +518,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			Str("type", ptr.Type().String()).
 			Str("method", "Init()").
 			Msg("Calling initializer")
-		
+
 		if err := initializer.Init(); err != nil {
 			logger.Error().
 				Str("path", pathStr).
@@ -536,7 +535,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			Msg("Init() completed successfully")
 		return nil
 	}
-	
+
 	// If value receiver, try again with the value itself
 	if v.Kind() != reflect.Ptr && v.CanInterface() {
 		// Check all three interfaces on the value
@@ -564,7 +563,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			}
 			return nil
 		}
-		
+
 		if initializer, ok := v.Interface().(ContextInitializer); ok {
 			if v.CanAddr() {
 				ptr := v.Addr()
@@ -589,7 +588,7 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			}
 			return nil
 		}
-		
+
 		if initializer, ok := v.Interface().(SimpleInitializer); ok {
 			if v.CanAddr() {
 				ptr := v.Addr()
@@ -615,26 +614,26 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 			return nil
 		}
 	}
-	
+
 	return nil
 }
 
 // callPreInit calls PreInit hook if the struct implements it
 func callPreInit(ctx context.Context, v reflect.Value, path []string, logger zerolog.Logger) error {
 	pathStr := pathToString(path)
-	
+
 	// Get a pointer to the value if it's not already a pointer
 	ptr := v
 	if v.Kind() != reflect.Ptr && v.CanAddr() {
 		ptr = v.Addr()
 	}
-	
+
 	if preInit, ok := ptr.Interface().(PreInitializer); ok {
 		logger.Trace().
 			Str("path", pathStr).
 			Str("type", ptr.Type().String()).
 			Msg("Calling PreInit")
-		
+
 		if err := preInit.PreInit(ctx); err != nil {
 			logger.Error().
 				Str("path", pathStr).
@@ -650,26 +649,26 @@ func callPreInit(ctx context.Context, v reflect.Value, path []string, logger zer
 			Str("path", pathStr).
 			Msg("PreInit completed successfully")
 	}
-	
+
 	return nil
 }
 
 // callPostInit calls PostInit hook if the struct implements it
 func callPostInit(ctx context.Context, v reflect.Value, path []string, logger zerolog.Logger) error {
 	pathStr := pathToString(path)
-	
+
 	// Get a pointer to the value if it's not already a pointer
 	ptr := v
 	if v.Kind() != reflect.Ptr && v.CanAddr() {
 		ptr = v.Addr()
 	}
-	
+
 	if postInit, ok := ptr.Interface().(PostInitializer); ok {
 		logger.Trace().
 			Str("path", pathStr).
 			Str("type", ptr.Type().String()).
 			Msg("Calling PostInit")
-		
+
 		if err := postInit.PostInit(ctx); err != nil {
 			logger.Error().
 				Str("path", pathStr).
@@ -685,7 +684,7 @@ func callPostInit(ctx context.Context, v reflect.Value, path []string, logger ze
 			Str("path", pathStr).
 			Msg("PostInit completed successfully")
 	}
-	
+
 	return nil
 }
 
@@ -694,13 +693,13 @@ func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName strin
 	if !parent.IsValid() {
 		return nil
 	}
-	
+
 	// Get a pointer to the parent if it's not already a pointer
 	parentPtr := parent
 	if parent.Kind() != reflect.Ptr && parent.CanAddr() {
 		parentPtr = parent.Addr()
 	}
-	
+
 	// Always pass a pointer to the field to allow modification
 	var fieldInterface interface{}
 	if fieldValue.CanInterface() {
@@ -720,13 +719,13 @@ func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName strin
 			fieldInterface = fieldValue.Interface()
 		}
 	}
-	
+
 	if hook, ok := parentPtr.Interface().(PreFieldHook); ok {
 		logger.Trace().
 			Str("parent_type", parentPtr.Type().String()).
 			Str("field", fieldName).
 			Msg("Calling PreFieldInit hook")
-		
+
 		if err := hook.PreFieldInit(ctx, fieldName, fieldInterface); err != nil {
 			logger.Error().
 				Str("field", fieldName).
@@ -738,7 +737,7 @@ func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName strin
 			Str("field", fieldName).
 			Msg("PreFieldInit hook completed")
 	}
-	
+
 	return nil
 }
 
@@ -747,13 +746,13 @@ func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName stri
 	if !parent.IsValid() {
 		return nil
 	}
-	
+
 	// Get a pointer to the parent if it's not already a pointer
 	parentPtr := parent
 	if parent.Kind() != reflect.Ptr && parent.CanAddr() {
 		parentPtr = parent.Addr()
 	}
-	
+
 	// Always pass a pointer to the field to allow modification
 	var fieldInterface interface{}
 	if fieldValue.CanInterface() {
@@ -773,13 +772,13 @@ func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName stri
 			fieldInterface = fieldValue.Interface()
 		}
 	}
-	
+
 	if hook, ok := parentPtr.Interface().(PostFieldHook); ok {
 		logger.Trace().
 			Str("parent_type", parentPtr.Type().String()).
 			Str("field", fieldName).
 			Msg("Calling PostFieldInit hook")
-		
+
 		if err := hook.PostFieldInit(ctx, fieldName, fieldInterface); err != nil {
 			logger.Error().
 				Str("field", fieldName).
@@ -791,6 +790,6 @@ func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName stri
 			Str("field", fieldName).
 			Msg("PostFieldInit hook completed")
 	}
-	
+
 	return nil
 }

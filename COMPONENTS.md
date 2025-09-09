@@ -49,7 +49,61 @@ type Application struct {
 }
 ```
 
-### 2. **Self-Contained**
+### 2. **Configuration-Driven Architecture**
+Components can automatically discover their configuration from YAML:
+```go
+// Configuration structure
+type AppConfig struct {
+    Environment string         `yaml:"environment"`
+    Database    DatabaseConfig `yaml:"database"`
+    Redis       RedisConfig    `yaml:"redis"`
+}
+
+// Component that discovers its config automatically
+type DatabaseComponent struct {
+    Config    *DatabaseConfig
+    Connected bool
+}
+
+func (d *DatabaseComponent) Init(ctx context.Context, parent interface{}) error {
+    // Auto-discover configuration from parent app
+    if app, ok := parent.(*Application); ok {
+        d.Config = &app.Config.Database
+    }
+    // Initialize using config
+    return d.connect()
+}
+
+// Main application with embedded config
+type Application struct {
+    Config AppConfig `yaml:",inline"`  // Loaded from YAML
+    
+    // Components that auto-discover their configuration
+    Database *DatabaseComponent `autoinit:"init"`
+    Cache    *CacheComponent    `autoinit:"init"`
+}
+
+func main() {
+    app := &Application{
+        Database: &DatabaseComponent{},
+        Cache:    &CacheComponent{},
+    }
+    
+    // 1. Load configuration from YAML
+    yaml.Unmarshal(yamlData, app)
+    
+    // 2. Initialize everything with configuration discovery
+    autoinit.AutoInit(ctx, app)  // Components find their config automatically!
+}
+```
+
+**Benefits:**
+- **Declarative**: Define configuration in YAML, not code
+- **Automatic Discovery**: Components find their configuration without manual wiring
+- **Environment-Specific**: Different YAML files for dev/staging/production
+- **Type-Safe**: Strong typing with struct validation
+
+### 3. **Self-Contained**
 Each component manages its own initialization:
 ```go
 type DatabaseComponent struct {
@@ -65,7 +119,7 @@ func (d *DatabaseComponent) Init(ctx context.Context) error {
 }
 ```
 
-### 3. **Composable**
+### 4. **Composable**
 Components can contain other components:
 ```go
 type APIComponent struct {
@@ -80,7 +134,7 @@ type RouterComponent struct {
 }
 ```
 
-### 4. **Testable**
+### 5. **Testable**
 Swap components with mocks easily:
 ```go
 // Production

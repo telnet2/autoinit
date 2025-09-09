@@ -48,7 +48,7 @@ func (m *ServiceManager) PreFieldInit(ctx context.Context, fieldName string, fie
 			fmt.Printf("About to initialize %d backup services\n", len(*backups))
 		}
 	}
-	
+
 	if m.InitCounts != nil {
 		m.InitCounts["pre-"+fieldName]++
 	}
@@ -80,7 +80,7 @@ func (m *ServiceManager) PostFieldInit(ctx context.Context, fieldName string, fi
 			fmt.Printf("All backups initialized: %d/%d running\n", running, len(*backups))
 		}
 	}
-	
+
 	if m.InitCounts != nil {
 		m.InitCounts["post-"+fieldName]++
 	}
@@ -100,28 +100,28 @@ func Example_collectionHooks() {
 			{Name: "backup2"},
 		},
 	}
-	
+
 	ctx := context.Background()
 	silentLogger := zerolog.New(io.Discard)
 	options := &autoinit.Options{Logger: &silentLogger}
-	
+
 	if err := autoinit.AutoInitWithOptions(ctx, manager, options); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	
+
 	// Check that hooks were called once per collection, not per element
 	fmt.Printf("\nHook call counts:\n")
 	fmt.Printf("  pre-Services: %d (called once for the map)\n", manager.InitCounts["pre-Services"])
 	fmt.Printf("  post-Services: %d (called once for the map)\n", manager.InitCounts["post-Services"])
 	fmt.Printf("  pre-Backups: %d (called once for the slice)\n", manager.InitCounts["pre-Backups"])
 	fmt.Printf("  post-Backups: %d (called once for the slice)\n", manager.InitCounts["post-Backups"])
-	
+
 	// The monitoring service we added in PreFieldInit should be initialized
 	if monitoring, ok := manager.Services["monitoring"]; ok {
 		fmt.Printf("\nDynamically added service: %s is %s\n", monitoring.Name, monitoring.Status)
 	}
-	
+
 	// Output:
 	// About to initialize 3 services
 	// All services initialized: 4/4 running

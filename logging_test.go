@@ -11,8 +11,8 @@ import (
 
 // LoggingComponent for testing trace logging
 type LoggingComponent struct {
-	Name   string
-	Nested NestedLogging
+	Name        string
+	Nested      NestedLogging
 	Initialized bool
 }
 
@@ -22,7 +22,7 @@ func (l *LoggingComponent) Init(ctx context.Context) error {
 }
 
 type NestedLogging struct {
-	Value string
+	Value       string
 	Initialized bool
 }
 
@@ -37,18 +37,18 @@ func TestDefaultLogger(t *testing.T) {
 	component := &LoggingComponent{
 		Name: "test",
 	}
-	
+
 	ctx := context.Background()
 	err := AutoInit(ctx, component)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if !component.Nested.Initialized {
 		t.Error("nested component was not initialized")
 	}
@@ -59,25 +59,25 @@ func TestCustomLogger(t *testing.T) {
 	// Create a buffer to capture log output
 	var buf bytes.Buffer
 	logger := zerolog.New(&buf).With().Timestamp().Logger().Level(zerolog.TraceLevel)
-	
+
 	component := &LoggingComponent{
 		Name: "test",
 	}
-	
+
 	ctx := context.Background()
 	options := &Options{
 		Logger: &logger,
 	}
-	
+
 	err := AutoInitWithOptions(ctx, component, options)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Check that logging occurred
 	logOutput := buf.String()
-	
+
 	// Verify key log messages are present
 	expectedMessages := []string{
 		"Starting AutoInit",
@@ -87,18 +87,18 @@ func TestCustomLogger(t *testing.T) {
 		"completed successfully",
 		"AutoInit completed successfully",
 	}
-	
+
 	for _, msg := range expectedMessages {
 		if !strings.Contains(logOutput, msg) {
 			t.Errorf("expected log message '%s' not found in output", msg)
 		}
 	}
-	
+
 	// Verify trace level logging
 	if !strings.Contains(logOutput, "trace") {
 		t.Error("expected trace level logging not found")
 	}
-	
+
 	// Verify path information
 	if !strings.Contains(logOutput, "Nested") {
 		t.Error("expected field path 'Nested' not found in logs")
@@ -108,8 +108,8 @@ func TestCustomLogger(t *testing.T) {
 // Test logging with different log levels
 func TestLogLevels(t *testing.T) {
 	testCases := []struct {
-		name     string
-		level    zerolog.Level
+		name      string
+		level     zerolog.Level
 		shouldLog bool
 	}{
 		{"Trace", zerolog.TraceLevel, true},
@@ -117,29 +117,29 @@ func TestLogLevels(t *testing.T) {
 		{"Info", zerolog.InfoLevel, false},
 		{"Error", zerolog.ErrorLevel, false},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			logger := zerolog.New(&buf).With().Timestamp().Logger().Level(tc.level)
-			
+
 			component := &LoggingComponent{
 				Name: "test",
 			}
-			
+
 			ctx := context.Background()
 			options := &Options{
 				Logger: &logger,
 			}
-			
+
 			err := AutoInitWithOptions(ctx, component, options)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			
+
 			logOutput := buf.String()
 			hasTraceLog := strings.Contains(logOutput, "Traversing field")
-			
+
 			if tc.shouldLog && !hasTraceLog {
 				t.Errorf("expected trace logs for level %s, but none found", tc.name)
 			} else if !tc.shouldLog && hasTraceLog {
@@ -153,7 +153,7 @@ func TestLogLevels(t *testing.T) {
 func TestLoggingComplexStructure(t *testing.T) {
 	var buf bytes.Buffer
 	logger := zerolog.New(&buf).With().Timestamp().Logger().Level(zerolog.TraceLevel)
-	
+
 	// Use existing ComplexApp from tests
 	app := &ComplexApp{
 		Services: []Service{
@@ -164,19 +164,19 @@ func TestLoggingComplexStructure(t *testing.T) {
 			"plugin1": {},
 		},
 	}
-	
+
 	ctx := context.Background()
 	options := &Options{
 		Logger: &logger,
 	}
-	
+
 	err := AutoInitWithOptions(ctx, app, options)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	logOutput := buf.String()
-	
+
 	// Check for complex path logging
 	expectedPaths := []string{
 		"Services.[0]",
@@ -184,7 +184,7 @@ func TestLoggingComplexStructure(t *testing.T) {
 		"Cache",
 		"Plugins.[plugin1]",
 	}
-	
+
 	for _, path := range expectedPaths {
 		if !strings.Contains(logOutput, path) {
 			t.Errorf("expected path '%s' not found in logs", path)
@@ -197,18 +197,18 @@ func TestNilLoggerInOptions(t *testing.T) {
 	component := &LoggingComponent{
 		Name: "test",
 	}
-	
+
 	ctx := context.Background()
 	options := &Options{
 		Logger: nil, // Explicitly nil logger should use default
 	}
-	
+
 	err := AutoInitWithOptions(ctx, component, options)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
@@ -227,7 +227,7 @@ func TestPathFormatting(t *testing.T) {
 		{[]string{"Map", "[key]"}, "Map.[key]"},
 		{[]string{"A", "B", "C"}, "A.B.C"},
 	}
-	
+
 	for _, tc := range testCases {
 		result := pathToString(tc.path)
 		if result != tc.expected {

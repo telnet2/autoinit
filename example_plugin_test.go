@@ -91,7 +91,7 @@ func Example_plugAndPlay() {
 	}
 
 	// Plug in components as needed - no code changes required!
-	app.Auth = &AuthComponent{}      // Just add authentication
+	app.Auth = &AuthComponent{}       // Just add authentication
 	app.Metrics = &MetricsComponent{} // Just add metrics
 	// app.Cache = &CacheComponent{}   // Commented out - not needed yet
 	// app.RateLimit = ...              // Can add later when needed

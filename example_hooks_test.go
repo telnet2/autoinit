@@ -38,7 +38,7 @@ type System struct {
 	Database Component
 	Cache    Component
 	API      Component
-	
+
 	// Track initialization order
 	InitOrder []string
 }
@@ -69,19 +69,19 @@ func Example_hooks() {
 		Cache:    Component{Name: "Cache"},
 		API:      Component{Name: "API"},
 	}
-	
+
 	// Initialize with silent logger for cleaner example output
 	ctx := context.Background()
 	silentLogger := zerolog.New(io.Discard)
 	options := &autoinit.Options{Logger: &silentLogger}
-	
+
 	if err := autoinit.AutoInitWithOptions(ctx, system, options); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	
+
 	fmt.Printf("\nInitialization order: %v\n", system.InitOrder)
-	
+
 	// Output:
 	// System: About to initialize Database
 	// Component Database: Starting initialization

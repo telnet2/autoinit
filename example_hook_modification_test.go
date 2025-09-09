@@ -39,7 +39,7 @@ func (s *ServiceContainer) PreFieldInit(ctx context.Context, fieldName string, f
 	if !ok {
 		return nil
 	}
-	
+
 	switch s.Environment {
 	case "production":
 		switch fieldName {
@@ -59,9 +59,9 @@ func (s *ServiceContainer) PreFieldInit(ctx context.Context, fieldName string, f
 			config.Host = "db.staging.example.com"
 			config.Port = 5432
 		}
-	// For development, let the defaults from Init() be used
+		// For development, let the defaults from Init() be used
 	}
-	
+
 	fmt.Printf("PreFieldInit: Setting %s config for %s environment\n", fieldName, s.Environment)
 	return nil
 }
@@ -72,7 +72,7 @@ func (s *ServiceContainer) PostFieldInit(ctx context.Context, fieldName string, 
 	if !ok {
 		return nil
 	}
-	
+
 	fmt.Printf("PostFieldInit: %s configured at %s:%d\n", fieldName, config.Host, config.Port)
 	return nil
 }
@@ -83,28 +83,28 @@ func Example_hookModification() {
 	prodContainer := &ServiceContainer{
 		Environment: "production",
 	}
-	
+
 	ctx := context.Background()
 	silentLogger := zerolog.New(io.Discard)
 	options := &autoinit.Options{Logger: &silentLogger}
-	
+
 	fmt.Println("=== Production Environment ===")
 	if err := autoinit.AutoInitWithOptions(ctx, prodContainer, options); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	
+
 	// Development environment
 	devContainer := &ServiceContainer{
 		Environment: "development",
 	}
-	
+
 	fmt.Println("\n=== Development Environment ===")
 	if err := autoinit.AutoInitWithOptions(ctx, devContainer, options); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	
+
 	// Output:
 	// === Production Environment ===
 	// PreFieldInit: Setting APIConfig config for production environment

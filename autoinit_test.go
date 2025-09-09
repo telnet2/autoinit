@@ -11,7 +11,7 @@ import (
 
 // Simple struct with Init method
 type SimpleComponent struct {
-	Name       string
+	Name        string
 	Initialized bool
 }
 
@@ -23,9 +23,9 @@ func (s *SimpleComponent) Init(ctx context.Context) error {
 
 // Struct with nested components
 type NestedComponent struct {
-	ID         int
+	ID           int
 	SubComponent SimpleComponent
-	Initialized bool
+	Initialized  bool
 }
 
 func (n *NestedComponent) Init(ctx context.Context) error {
@@ -36,8 +36,8 @@ func (n *NestedComponent) Init(ctx context.Context) error {
 
 // Struct with pointer fields
 type PointerComponent struct {
-	Sub        *SimpleComponent
-	Nested     *NestedComponent
+	Sub         *SimpleComponent
+	Nested      *NestedComponent
 	Initialized bool
 }
 
@@ -60,10 +60,10 @@ func (f *FailingComponent) Init(ctx context.Context) error {
 
 // Complex struct with multiple levels
 type ComplexApp struct {
-	Config     ConfigManager
-	Services   []Service
-	Cache      *CacheLayer
-	Plugins    map[string]Plugin
+	Config      ConfigManager
+	Services    []Service
+	Cache       *CacheLayer
+	Plugins     map[string]Plugin
 	Initialized bool
 }
 
@@ -73,7 +73,7 @@ func (c *ComplexApp) Init(ctx context.Context) error {
 }
 
 type ConfigManager struct {
-	Settings   map[string]string
+	Settings    map[string]string
 	Initialized bool
 }
 
@@ -87,8 +87,8 @@ func (c *ConfigManager) Init(ctx context.Context) error {
 }
 
 type Service struct {
-	Name       string
-	Database   *Database
+	Name        string
+	Database    *Database
 	Initialized bool
 }
 
@@ -111,7 +111,7 @@ func (d *Database) Init(ctx context.Context) error {
 }
 
 type CacheLayer struct {
-	Entries    map[string]interface{}
+	Entries     map[string]interface{}
 	Initialized bool
 }
 
@@ -124,7 +124,7 @@ func (c *CacheLayer) Init(ctx context.Context) error {
 }
 
 type Plugin struct {
-	Active     bool
+	Active      bool
 	Initialized bool
 }
 
@@ -142,8 +142,8 @@ type NoInitStruct struct {
 // Struct with embedded field
 type EmbeddedStruct struct {
 	SimpleComponent // embedded
-	Extra          string
-	Initialized    bool
+	Extra           string
+	Initialized     bool
 }
 
 func (e *EmbeddedStruct) Init(ctx context.Context) error {
@@ -156,16 +156,16 @@ func (e *EmbeddedStruct) Init(ctx context.Context) error {
 func TestSimpleInit(t *testing.T) {
 	component := &SimpleComponent{}
 	ctx := context.Background()
-	
+
 	err := AutoInit(ctx, component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if component.Name != "initialized" {
 		t.Errorf("expected Name to be 'initialized', got '%s'", component.Name)
 	}
@@ -174,20 +174,20 @@ func TestSimpleInit(t *testing.T) {
 // Test nested struct initialization
 func TestNestedInit(t *testing.T) {
 	component := &NestedComponent{}
-	
+
 	err := AutoInit(context.Background(), component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if !component.SubComponent.Initialized {
 		t.Error("SubComponent was not initialized")
 	}
-	
+
 	if component.ID != 42 {
 		t.Errorf("expected ID to be 42, got %d", component.ID)
 	}
@@ -199,24 +199,24 @@ func TestPointerFieldInit(t *testing.T) {
 		Sub:    &SimpleComponent{},
 		Nested: &NestedComponent{},
 	}
-	
+
 	err := AutoInit(context.Background(), component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if !component.Sub.Initialized {
 		t.Error("Sub was not initialized")
 	}
-	
+
 	if !component.Nested.Initialized {
 		t.Error("Nested was not initialized")
 	}
-	
+
 	if !component.Nested.SubComponent.Initialized {
 		t.Error("Nested.SubComponent was not initialized")
 	}
@@ -225,23 +225,23 @@ func TestPointerFieldInit(t *testing.T) {
 // Test nil pointer handling
 func TestNilPointerHandling(t *testing.T) {
 	component := &PointerComponent{
-		Sub: nil, // nil pointer should be skipped
+		Sub:    nil, // nil pointer should be skipped
 		Nested: &NestedComponent{},
 	}
-	
+
 	err := AutoInit(context.Background(), component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if component.Sub != nil {
 		t.Error("nil pointer should remain nil")
 	}
-	
+
 	if !component.Nested.Initialized {
 		t.Error("Nested was not initialized")
 	}
@@ -255,20 +255,20 @@ func TestErrorPropagation(t *testing.T) {
 	}{
 		Failing: FailingComponent{ShouldFail: true},
 	}
-	
+
 	err := AutoInit(context.Background(), component)
 	if err == nil {
 		t.Fatal("expected error but got nil")
 	}
-	
+
 	if !strings.Contains(err.Error(), "initialization failed as expected") {
 		t.Errorf("unexpected error message: %v", err)
 	}
-	
+
 	if !strings.Contains(err.Error(), "Failing") {
 		t.Errorf("error should contain field name 'Failing': %v", err)
 	}
-	
+
 	// Working component should have been initialized before failure
 	if !component.Working.Initialized {
 		t.Error("Working component should have been initialized before failure")
@@ -288,26 +288,26 @@ func TestComplexStructInit(t *testing.T) {
 			"plugin2": {},
 		},
 	}
-	
+
 	err := AutoInit(context.Background(), app)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Check app initialization
 	if !app.Initialized {
 		t.Error("app was not initialized")
 	}
-	
+
 	// Check config initialization
 	if !app.Config.Initialized {
 		t.Error("Config was not initialized")
 	}
-	
+
 	if app.Config.Settings["initialized"] != "true" {
 		t.Error("Config settings not properly initialized")
 	}
-	
+
 	// Check services initialization
 	for i, service := range app.Services {
 		if !service.Initialized {
@@ -317,12 +317,12 @@ func TestComplexStructInit(t *testing.T) {
 			t.Errorf("Service[%d].Database was not connected", i)
 		}
 	}
-	
+
 	// Check cache initialization
 	if !app.Cache.Initialized {
 		t.Error("Cache was not initialized")
 	}
-	
+
 	// Check plugins initialization
 	for name, plugin := range app.Plugins {
 		if !plugin.Initialized {
@@ -343,23 +343,23 @@ func TestErrorInSliceElement(t *testing.T) {
 			{Name: "service3", Database: &Database{}},
 		},
 	}
-	
+
 	err := AutoInit(context.Background(), app)
 	if err == nil {
 		t.Fatal("expected error but got nil")
 	}
-	
+
 	initErr, ok := err.(*InitError)
 	if !ok {
 		t.Fatalf("expected *InitError, got %T", err)
 	}
-	
+
 	// Check error path contains Services[1].Database
 	path := strings.Join(initErr.GetPath(), ".")
 	if !strings.Contains(path, "Services.[1].Database") {
 		t.Errorf("error path should contain 'Services.[1].Database', got: %s", path)
 	}
-	
+
 	if !strings.Contains(err.Error(), "database connection failed") {
 		t.Errorf("error should contain original message: %v", err)
 	}
@@ -368,15 +368,15 @@ func TestErrorInSliceElement(t *testing.T) {
 // Test struct without Init method
 func TestStructWithoutInit(t *testing.T) {
 	component := &struct {
-		NoInit NoInitStruct
+		NoInit   NoInitStruct
 		WithInit SimpleComponent
 	}{}
-	
+
 	err := AutoInit(context.Background(), component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// NoInit should be skipped without error
 	if !component.WithInit.Initialized {
 		t.Error("WithInit component was not initialized")
@@ -386,20 +386,20 @@ func TestStructWithoutInit(t *testing.T) {
 // Test embedded struct
 func TestEmbeddedStruct(t *testing.T) {
 	component := &EmbeddedStruct{}
-	
+
 	err := AutoInit(context.Background(), component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if !component.SimpleComponent.Initialized {
 		t.Error("embedded SimpleComponent was not initialized")
 	}
-	
+
 	if component.Extra != "embedded" {
 		t.Errorf("expected Extra to be 'embedded', got '%s'", component.Extra)
 	}
@@ -408,12 +408,12 @@ func TestEmbeddedStruct(t *testing.T) {
 // Test value struct (not pointer)
 func TestValueStruct(t *testing.T) {
 	component := SimpleComponent{}
-	
+
 	err := AutoInit(context.Background(), &component) // Pass pointer to allow modification
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
@@ -425,7 +425,7 @@ func TestNilTarget(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for nil target")
 	}
-	
+
 	if !strings.Contains(err.Error(), "nil target") {
 		t.Errorf("unexpected error message: %v", err)
 	}
@@ -434,12 +434,12 @@ func TestNilTarget(t *testing.T) {
 // Test nil pointer target
 func TestNilPointerTarget(t *testing.T) {
 	var component *SimpleComponent
-	
+
 	err := AutoInit(context.Background(), component)
 	if err == nil {
 		t.Fatal("expected error for nil pointer")
 	}
-	
+
 	if !strings.Contains(err.Error(), "nil pointer") {
 		t.Errorf("unexpected error message: %v", err)
 	}
@@ -448,12 +448,12 @@ func TestNilPointerTarget(t *testing.T) {
 // Test non-struct target
 func TestNonStructTarget(t *testing.T) {
 	var intValue int = 42
-	
+
 	err := AutoInit(context.Background(), &intValue)
 	if err == nil {
 		t.Fatal("expected error for non-struct target")
 	}
-	
+
 	if !strings.Contains(err.Error(), "must be a struct") {
 		t.Errorf("unexpected error message: %v", err)
 	}
@@ -464,7 +464,7 @@ func TestInitializationOrder(t *testing.T) {
 	type OrderedComponent struct {
 		Name string
 	}
-	
+
 	component := &struct {
 		First  OrderedComponent
 		Second OrderedComponent
@@ -474,14 +474,14 @@ func TestInitializationOrder(t *testing.T) {
 		Second: OrderedComponent{Name: "second"},
 		Third:  OrderedComponent{Name: "third"},
 	}
-	
+
 	// We can't easily test order with current implementation,
 	// but we ensure all fields are processed
 	err := AutoInit(context.Background(), component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// All fields should maintain their values
 	if component.First.Name != "first" {
 		t.Error("First field value changed unexpectedly")

@@ -40,15 +40,15 @@ func (c *ContextOnly) Init(ctx context.Context) error {
 
 // ParentOnly implements only Init(ctx, parent)
 type ParentOnly struct {
-	Name       string
-	ParentName string
+	Name        string
+	ParentName  string
 	Initialized bool
 }
 
 func (p *ParentOnly) Init(ctx context.Context, parent interface{}) error {
 	p.Initialized = true
 	p.Name = "with-parent"
-	
+
 	// Extract parent name if possible
 	if parent != nil {
 		if parentStruct, ok := parent.(*MixedContainer); ok {
@@ -96,7 +96,7 @@ type NestedWithParent struct {
 
 func (n *NestedWithParent) Init(ctx context.Context, parent interface{}) error {
 	n.ChildData = "child-initialized"
-	
+
 	// Access parent struct (the parent's Init hasn't been called yet)
 	if p, ok := parent.(*ParentAware); ok {
 		n.ParentType = "ParentAware"
@@ -122,16 +122,16 @@ func (p *ParentAware) Init(ctx context.Context) error {
 func TestSimpleInitInterface(t *testing.T) {
 	component := &SimpleOnly{}
 	ctx := context.Background()
-	
+
 	err := AutoInit(ctx, component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if component.Name != "simple" {
 		t.Errorf("expected Name to be 'simple', got '%s'", component.Name)
 	}
@@ -141,20 +141,20 @@ func TestSimpleInitInterface(t *testing.T) {
 func TestContextInitInterface(t *testing.T) {
 	component := &ContextOnly{}
 	ctx := context.WithValue(context.Background(), "test-key", "test-value")
-	
+
 	err := AutoInit(ctx, component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.Initialized {
 		t.Error("component was not initialized")
 	}
-	
+
 	if component.Name != "context" {
 		t.Errorf("expected Name to be 'context', got '%s'", component.Name)
 	}
-	
+
 	if component.CtxValue != "test-value" {
 		t.Errorf("expected CtxValue to be 'test-value', got '%s'", component.CtxValue)
 	}
@@ -166,20 +166,20 @@ func TestParentInitInterface(t *testing.T) {
 		Name: "parent-container",
 	}
 	ctx := context.Background()
-	
+
 	err := AutoInit(ctx, container)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !container.Parent.Initialized {
 		t.Error("Parent field was not initialized")
 	}
-	
+
 	if container.Parent.Name != "with-parent" {
 		t.Errorf("expected Parent.Name to be 'with-parent', got '%s'", container.Parent.Name)
 	}
-	
+
 	if container.Parent.ParentName != "parent-container" {
 		t.Errorf("expected Parent.ParentName to be 'parent-container', got '%s'", container.Parent.ParentName)
 	}
@@ -191,42 +191,42 @@ func TestMixedInterfaces(t *testing.T) {
 		Name: "mixed-container",
 	}
 	ctx := context.WithValue(context.Background(), "test-key", "ctx-value")
-	
+
 	err := AutoInit(ctx, container)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	// Check all fields are initialized
 	if !container.Initialized {
 		t.Error("container was not initialized")
 	}
-	
+
 	if !container.Simple.Initialized {
 		t.Error("Simple field was not initialized")
 	}
-	
+
 	if !container.Context.Initialized {
 		t.Error("Context field was not initialized")
 	}
-	
+
 	if container.Context.CtxValue != "ctx-value" {
 		t.Errorf("Context field didn't receive context value")
 	}
-	
+
 	if !container.Parent.Initialized {
 		t.Error("Parent field was not initialized")
 	}
-	
+
 	if container.Parent.ParentName != "mixed-container" {
 		t.Errorf("Parent field didn't receive parent reference")
 	}
-	
+
 	// Check that AllInterfaces used the highest priority (parent) interface
 	if !container.All.Initialized {
 		t.Error("All field was not initialized")
 	}
-	
+
 	if container.All.Method != "parent" {
 		t.Errorf("expected All.Method to be 'parent' (highest priority), got '%s'", container.All.Method)
 	}
@@ -238,25 +238,25 @@ func TestParentReferencePropagation(t *testing.T) {
 		PresetData: "preset-value",
 	}
 	ctx := context.Background()
-	
+
 	err := AutoInit(ctx, component)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if component.ParentData != "parent-data" {
 		t.Errorf("expected ParentData to be 'parent-data', got '%s'", component.ParentData)
 	}
-	
+
 	if component.Child.ChildData != "child-initialized" {
 		t.Errorf("expected Child.ChildData to be 'child-initialized', got '%s'", component.Child.ChildData)
 	}
-	
+
 	// Child should have received parent type
 	if component.Child.ParentType != "ParentAware" {
 		t.Errorf("expected Child.ParentType to be 'ParentAware', got '%s'", component.Child.ParentType)
 	}
-	
+
 	// Child should have access to parent's preset field
 	if component.Child.ParentField != "preset-value" {
 		t.Errorf("expected Child.ParentField to be 'preset-value', got '%s'", component.Child.ParentField)
@@ -282,14 +282,14 @@ func TestSimpleInitError(t *testing.T) {
 	}{
 		Field: FailingSimple{ShouldFail: true},
 	}
-	
+
 	ctx := context.Background()
 	err := AutoInit(ctx, component)
-	
+
 	if err == nil {
 		t.Fatal("expected error but got nil")
 	}
-	
+
 	if !strings.Contains(err.Error(), "simple init failed") {
 		t.Errorf("unexpected error message: %v", err)
 	}
@@ -313,17 +313,17 @@ func (s *SlowInit) Init(ctx context.Context) error {
 // Test context cancellation
 func TestContextCancellation(t *testing.T) {
 	component := &SlowInit{}
-	
+
 	// Create a cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
-	
+
 	err := AutoInit(ctx, component)
-	
+
 	if err == nil {
 		t.Fatal("expected error for cancelled context")
 	}
-	
+
 	if !strings.Contains(err.Error(), "context canceled") {
 		t.Errorf("expected context canceled error, got: %v", err)
 	}
@@ -342,14 +342,14 @@ func (r *RootStruct) Init(ctx context.Context, parent interface{}) error {
 // Test with nil parent (root struct)
 func TestNilParentForRoot(t *testing.T) {
 	component := &RootStruct{}
-	
+
 	ctx := context.Background()
 	err := AutoInit(ctx, component)
-	
+
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	
+
 	if !component.ReceivedNilParent {
 		t.Error("root struct should receive nil parent")
 	}
