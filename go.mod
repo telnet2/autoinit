@@ -1,6 +1,6 @@
 module github.com/telnet2/autoinit
 
-go 1.25.0
+go 1.20
 
 require (
 	github.com/rs/zerolog v1.34.0
