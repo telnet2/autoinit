@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoInit - Component-Based Initialization Framework for Go</title>
+    <meta name="description" content="Eliminate initialization boilerplate. Build applications by composing self-contained components that initialize themselves.">
+    <meta name="keywords" content="Go, Golang, initialization, components, framework, microservices, dependency injection">
+    <meta name="author" content="AutoInit">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="AutoInit - Component-Based Initialization Framework for Go">
+    <meta property="og:description" content="Eliminate initialization boilerplate. Build applications by composing self-contained components that initialize themselves.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/og-image.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔧</text></svg>">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Fira Code', 'Monaco', 'Consolas', 'monospace']
+                    },
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(var(--secondary))",
+                            foreground: "hsl(var(--secondary-foreground))",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(var(--destructive))",
+                            foreground: "hsl(var(--destructive-foreground))",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(var(--muted))",
+                            foreground: "hsl(var(--muted-foreground))",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(var(--accent))",
+                            foreground: "hsl(var(--accent-foreground))",
+                        },
+                        popover: {
+                            DEFAULT: "hsl(var(--popover))",
+                            foreground: "hsl(var(--popover-foreground))",
+                        },
+                        card: {
+                            DEFAULT: "hsl(var(--card))",
+                            foreground: "hsl(var(--card-foreground))",
+                        },
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'bounce-gentle': 'bounceGentle 2s infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        bounceGentle: {
+                            '0%, 20%, 50%, 80%, 100%': { transform: 'translateY(0)' },
+                            '40%': { transform: 'translateY(-5px)' },
+                            '60%': { transform: 'translateY(-3px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- CSS Variables for shadcn/ui theme -->
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96%;
+            --secondary-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96%;
+            --accent-foreground: 222.2 84% 4.9%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 221.2 83.2% 53.3%;
+        }
+
+        .dark {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%;
+            --primary-foreground: 222.2 84% 4.9%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 224.3 76.3% 94.1%;
+        }
+
+        /* Custom styles for better layout */
+        .container {
+            @apply mx-auto px-4 sm:px-6 lg:px-8;
+            max-width: 1200px;
+        }
+
+        .code-block {
+            @apply bg-slate-900 text-slate-100 p-6 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(71 85 105) transparent;
+        }
+
+        .code-block::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .code-block::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .code-block::-webkit-scrollbar-thumb {
+            background: rgb(71 85 105);
+            border-radius: 4px;
+        }
+
+        .dark .code-block {
+            @apply bg-slate-800 border border-slate-700;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 50%, hsl(221.2 83.2% 65%) 100%);
+        }
+
+        .glass-effect {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .dark .glass-effect {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        /* Syntax highlighting */
+        .token.comment { color: #6a737d; }
+        .token.keyword { color: #d73a49; font-weight: 600; }
+        .token.string { color: #032f62; }
+        .token.function { color: #6f42c1; }
+        .token.number { color: #005cc5; }
+        .token.operator { color: #d73a49; }
+        .token.punctuation { color: #24292e; }
+        
+        .dark .token.comment { color: #8b949e; }
+        .dark .token.keyword { color: #ff7b72; }
+        .dark .token.string { color: #a5d6ff; }
+        .dark .token.function { color: #d2a8ff; }
+        .dark .token.number { color: #79c0ff; }
+        .dark .token.operator { color: #ff7b72; }
+        .dark .token.punctuation { color: #c9d1d9; }
+
+        /* Loading animation for images */
+        .loading-placeholder {
+            @apply bg-slate-200 animate-pulse;
+        }
+
+        .dark .loading-placeholder {
+            @apply bg-slate-700;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-foreground antialiased font-sans">
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 w-full border-b glass-effect">
+        <div class="container flex h-16 items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <a class="flex items-center space-x-2 font-bold text-lg" href="#home">
+                    <span class="text-3xl animate-bounce-gentle">🔧</span>
+                    <span class="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">AutoInit</span>
+                </a>
+            </div>
+            
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#features" class="text-foreground/70 hover:text-primary transition-colors font-medium">Features</a>
+                <a href="#quickstart" class="text-foreground/70 hover:text-primary transition-colors font-medium">Quick Start</a>
+                <a href="#examples" class="text-foreground/70 hover:text-primary transition-colors font-medium">Examples</a>
+                <a href="#docs" class="text-foreground/70 hover:text-primary transition-colors font-medium">Docs</a>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <button id="theme-toggle" class="inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:scale-105 h-10 w-10">
+                    <span class="sr-only">Toggle theme</span>
+                    <svg class="h-4 w-4 dark:hidden transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    <svg class="hidden h-4 w-4 dark:block transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
+                <a href="https://github.com/user/autoinit" target="_blank" class="inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 h-10 px-4">
+                    <svg class="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="relative py-20 lg:py-32 overflow-hidden">
+        <div class="absolute inset-0 gradient-bg opacity-5"></div>
+        <div class="container relative z-10">
+            <div class="max-w-4xl mx-auto text-center space-y-8 animate-fade-in">
+                <div class="inline-flex items-center rounded-full bg-muted px-6 py-2 text-sm font-medium animate-slide-up">
+                    <span class="mr-2">🚀</span>
+                    Component-Based Initialization Framework for Go
+                </div>
+                <h1 class="text-4xl sm:text-6xl lg:text-7xl font-bold leading-tight animate-slide-up" style="animation-delay: 0.1s;">
+                    Stop writing 
+                    <span class="bg-gradient-to-r from-primary via-blue-600 to-purple-600 bg-clip-text text-transparent">initialization</span> 
+                    code
+                </h1>
+                <p class="text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto animate-slide-up" style="animation-delay: 0.2s;">
+                    Build applications by composing self-contained components that initialize themselves. 
+                    Eliminate boilerplate and scale effortlessly.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style="animation-delay: 0.3s;">
+                    <a href="#quickstart" class="inline-flex items-center justify-center rounded-lg text-base font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 hover:shadow-lg h-12 px-8">
+                        Get Started
+                        <svg class="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </a>
+                    <a href="https://github.com/user/autoinit" target="_blank" class="inline-flex items-center justify-center rounded-lg text-base font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border-2 border-primary/20 bg-background hover:bg-accent hover:border-primary/40 hover:scale-105 hover:shadow-lg h-12 px-8">
+                        <svg class="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        View on GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem/Solution Section -->
+    <section class="py-20 bg-muted/30">
+        <div class="container">
+            <div class="max-w-6xl mx-auto">
+                <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-3xl">😓</span>
+                            <h3 class="text-2xl font-bold text-destructive">Before AutoInit</h3>
+                        </div>
+                        <div class="rounded-xl border bg-card text-card-foreground shadow-lg p-1">
+                            <div class="code-block">
+                                <pre><code>// Manual initialization hell
+func initializeApp() error {
+    app := &App{}
+    
+    // Initialize database
+    app.Database = &Database{}
+    if err := app.Database.Connect(); err != nil {
+        return err
+    }
+    
+    // Initialize cache (needs database)
+    app.Cache = &Cache{DB: app.Database}
+    if err := app.Cache.Setup(); err != nil {
+        return err
+    }
+    
+    // Initialize auth (needs database and cache)
+    app.Auth = &Auth{DB: app.Database, Cache: app.Cache}
+    if err := app.Auth.LoadConfig(); err != nil {
+        return err
+    }
+    
+    // ... repeat for every component
+    // ... maintain dependency order manually
+    // ... handle errors everywhere
+    return nil
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-3xl">🎉</span>
+                            <h3 class="text-2xl font-bold text-primary">After AutoInit</h3>
+                        </div>
+                        <div class="rounded-xl border bg-card text-card-foreground shadow-lg p-1">
+                            <div class="code-block">
+                                <pre><code>// Just plug components and go!
+type App struct {
+    Database *Database  // Self-initializing
+    Cache    *Cache     // Automatically wired  
+    Auth     *Auth      // Dependency-aware
+    Metrics  *Metrics   // Plug-and-play ready
+}
+
+func initializeApp() error {
+    app := &App{
+        Database: &Database{},
+        Cache:    &Cache{},
+        Auth:     &Auth{},
+        Metrics:  &Metrics{},
+    }
+    
+    // One call initializes everything!
+    return autoinit.AutoInit(context.Background(), app)
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20">
+        <div class="container">
+            <div class="max-w-4xl mx-auto text-center space-y-4 mb-16">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold">Powerful Features</h2>
+                <p class="text-xl text-muted-foreground">
+                    Everything you need for component-based initialization
+                </p>
+            </div>
+            <div class="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6">
+                        <span class="text-3xl">🔄</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Zero Config</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Drop components in, they initialize automatically. Eliminates boilerplate and wiring code completely.
+                    </p>
+                </div>
+
+                <div class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6">
+                        <span class="text-3xl">🎯</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Smart Discovery</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Automatically finds and calls the right Init method. Supports 3 different initialization patterns.
+                    </p>
+                </div>
+
+                <div class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6">
+                        <span class="text-3xl">🔍</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Rich Error Context</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Shows exact path when initialization fails. Debug complex issues in seconds, not hours.
+                    </p>
+                </div>
+
+                <div class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6">
+                        <span class="text-3xl">🪝</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Lifecycle Hooks</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Pre/Post initialization control for custom initialization flows and advanced scenarios.
+                    </p>
+                </div>
+
+                <div class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6">
+                        <span class="text-3xl">🏷️</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Tag-Based Control</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Use struct tags for explicit control: <code class="bg-muted px-1 py-0.5 rounded text-sm">autoinit:"-"</code> to skip, <code class="bg-muted px-1 py-0.5 rounded text-sm">autoinit:"init"</code> to include.
+                    </p>
+                </div>
+
+                <div class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6">
+                        <span class="text-3xl">🔗</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Component Discovery</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Find and use sibling/ancestor components. True dependency injection without heavyweight frameworks.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section id="quickstart" class="py-20 bg-muted/30">
+        <div class="container">
+            <div class="max-w-4xl mx-auto text-center space-y-4 mb-16">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold">Quick Start</h2>
+                <p class="text-xl text-muted-foreground">
+                    Get up and running in minutes
+                </p>
+            </div>
+            <div class="max-w-4xl mx-auto space-y-12">
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">1</div>
+                        <h3 class="text-2xl font-bold">Install</h3>
+                    </div>
+                    <div class="rounded-xl border bg-card text-card-foreground shadow-lg p-1">
+                        <div class="code-block">
+                            <pre><code>go get github.com/user/autoinit</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">2</div>
+                        <h3 class="text-2xl font-bold">Define Components</h3>
+                    </div>
+                    <div class="rounded-xl border bg-card text-card-foreground shadow-lg p-1">
+                        <div class="code-block">
+                            <pre><code>type Database struct {
+    Connected bool
+}
+
+func (d *Database) Init(ctx context.Context) error {
+    d.Connected = true
+    fmt.Println("📊 Database connected!")
+    return nil
+}
+
+type Cache struct {
+    Ready bool
+}
+
+func (c *Cache) Init(ctx context.Context) error {
+    c.Ready = true
+    fmt.Println("⚡ Cache ready!")
+    return nil
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">3</div>
+                        <h3 class="text-2xl font-bold">Compose and Initialize</h3>
+                    </div>
+                    <div class="rounded-xl border bg-card text-card-foreground shadow-lg p-1">
+                        <div class="code-block">
+                            <pre><code>type App struct {
+    DB    *Database
+    Cache *Cache
+}
+
+func main() {
+    app := &App{
+        DB:    &Database{},
+        Cache: &Cache{},
+    }
+    
+    // 🎉 One call to initialize everything!
+    if err := autoinit.AutoInit(context.Background(), app); err != nil {
+        panic(err)
+    }
+    
+    fmt.Println("🚀 App ready!")
+    // Output:
+    // 📊 Database connected!
+    // ⚡ Cache ready!
+    // 🚀 App ready!
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Examples Section -->
+    <section id="examples" class="py-20">
+        <div class="container">
+            <div class="max-w-4xl mx-auto text-center space-y-4 mb-16">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold">Real-World Examples</h2>
+                <p class="text-xl text-muted-foreground">
+                    See AutoInit in production scenarios
+                </p>
+            </div>
+            <div class="max-w-6xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-12">
+                <div class="space-y-6">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">🏗️</span>
+                        <h3 class="text-2xl font-bold">Microservice Application</h3>
+                    </div>
+                    <div class="rounded-xl border bg-card text-card-foreground shadow-lg p-1">
+                        <div class="code-block">
+                            <pre><code>type MicroService struct {
+    // Infrastructure
+    Database *PostgresDB    `autoinit:"init"`
+    Redis    *RedisCache    `autoinit:"init"`
+    Logger   *StructuredLogger
+    
+    // Business Logic
+    UserService    *UserService
+    OrderService   *OrderService
+    PaymentService *PaymentService
+    
+    // External Services
+    EmailProvider *EmailProvider
+    MetricsClient *PrometheusClient
+    
+    // HTTP Server
+    Router *HTTPRouter
+}
+
+// Start your entire microservice with one call!
+func main() {
+    service := &MicroService{
+        Database: &PostgresDB{DSN: os.Getenv("DB_URL")},
+        Redis:    &RedisCache{URL: os.Getenv("REDIS_URL")},
+        // ... initialize other components
+    }
+    
+    if err := autoinit.AutoInit(context.Background(), service); err != nil {
+        log.Fatal("Failed to start service:", err)
+    }
+    
+    log.Println("🚀 Microservice ready!")
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">🔌</span>
+                        <h3 class="text-2xl font-bold">Plugin System</h3>
+                    </div>
+                    <div class="rounded-xl border bg-card text-card-foreground shadow-lg p-1">
+                        <div class="code-block">
+                            <pre><code>type PluginSystem struct {
+    // Core always present
+    Core *CoreEngine
+    
+    // Plugins - just add to enable!
+    AuthPlugin      *AuthPlugin
+    MetricsPlugin   *MetricsPlugin
+    CachePlugin     *CachePlugin
+    RateLimitPlugin *RateLimitPlugin
+}
+
+func main() {
+    system := &PluginSystem{Core: &CoreEngine{}}
+    
+    // Conditionally add plugins
+    if needsAuth() {
+        system.AuthPlugin = &AuthPlugin{}
+    }
+    if isProduction() {
+        system.MetricsPlugin = &MetricsPlugin{}
+        system.RateLimitPlugin = &RateLimitPlugin{}
+    }
+    
+    // One call initializes everything plugged in!
+    autoinit.AutoInit(context.Background(), system)
+    
+    log.Println("🔌 Plugin system ready!")
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation Section -->
+    <section id="docs" class="py-20 bg-muted/30">
+        <div class="container">
+            <div class="max-w-4xl mx-auto text-center space-y-4 mb-16">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold">Documentation</h2>
+                <p class="text-xl text-muted-foreground">
+                    Everything you need to master AutoInit
+                </p>
+            </div>
+            <div class="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <a href="https://github.com/user/autoinit/blob/main/COMPONENTS.md" target="_blank" class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 hover:bg-accent/5 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6 group-hover:scale-110 transition-transform">
+                        <span class="text-3xl">🧩</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Components Guide</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Learn component-based architecture patterns and implementation best practices.
+                    </p>
+                </a>
+
+                <a href="https://github.com/user/autoinit/blob/main/FINDER.md" target="_blank" class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 hover:bg-accent/5 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6 group-hover:scale-110 transition-transform">
+                        <span class="text-3xl">🔍</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Component Discovery</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Master the component finder system for powerful dependency injection patterns.
+                    </p>
+                </a>
+
+                <a href="https://github.com/user/autoinit/blob/main/HOOKS.md" target="_blank" class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 hover:bg-accent/5 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6 group-hover:scale-110 transition-transform">
+                        <span class="text-3xl">🪝</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Lifecycle Hooks</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Customize initialization flows with Pre/Post hooks and field interceptors.
+                    </p>
+                </a>
+
+                <a href="https://github.com/user/autoinit/blob/main/TAGS.md" target="_blank" class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 hover:bg-accent/5 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6 group-hover:scale-110 transition-transform">
+                        <span class="text-3xl">🏷️</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Tag-Based Control</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Use struct tags to control which components get initialized and when.
+                    </p>
+                </a>
+
+                <a href="https://github.com/user/autoinit/blob/main/CROSS_DEPS.md" target="_blank" class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 hover:bg-accent/5 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6 group-hover:scale-110 transition-transform">
+                        <span class="text-3xl">🔗</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">Cross Dependencies</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Handle complex component dependencies with various architectural patterns.
+                    </p>
+                </a>
+
+                <a href="https://pkg.go.dev/github.com/user/autoinit" target="_blank" class="group rounded-xl border bg-card text-card-foreground shadow-lg p-8 hover:shadow-xl hover:scale-105 hover:bg-accent/5 transition-all duration-200">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground mb-6 group-hover:scale-110 transition-transform">
+                        <span class="text-3xl">📚</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">API Reference</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Complete API documentation with examples and comprehensive type information.
+                    </p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-gradient-to-br from-primary/5 via-blue-500/5 to-purple-500/5">
+        <div class="container">
+            <div class="max-w-4xl mx-auto text-center space-y-8">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold">Ready to get started?</h2>
+                <p class="text-xl text-muted-foreground leading-relaxed">
+                    Stop writing initialization code. Start building features that matter.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-6 justify-center">
+                    <a href="https://github.com/user/autoinit" target="_blank" class="inline-flex items-center justify-center rounded-lg text-lg font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105 hover:shadow-xl h-14 px-10">
+                        <svg class="mr-3 h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        Get Started on GitHub
+                    </a>
+                    <a href="https://pkg.go.dev/github.com/user/autoinit" target="_blank" class="inline-flex items-center justify-center rounded-lg text-lg font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border-2 border-primary/20 bg-background hover:bg-accent hover:border-primary/40 hover:scale-105 hover:shadow-xl h-14 px-10">
+                        <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        View Documentation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t py-12">
+        <div class="container">
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-4">
+                    <span class="text-3xl">🔧</span>
+                    <div>
+                        <p class="font-semibold text-lg">AutoInit</p>
+                        <p class="text-sm text-muted-foreground">
+                            Built with ❤️ for the Go community
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <p class="text-sm text-muted-foreground">MIT License</p>
+                    <a href="https://github.com/user/autoinit" target="_blank" class="text-muted-foreground hover:text-primary transition-colors">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.30 3.297-1.30.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Mobile Menu Toggle (if needed) -->
+    <div id="mobile-menu" class="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm md:hidden hidden">
+        <div class="container py-6">
+            <div class="flex items-center justify-between mb-8">
+                <span class="text-2xl font-bold">🔧 AutoInit</span>
+                <button id="close-mobile-menu" class="text-2xl">&times;</button>
+            </div>
+            <nav class="space-y-4">
+                <a href="#features" class="block text-lg py-2 border-b border-border">Features</a>
+                <a href="#quickstart" class="block text-lg py-2 border-b border-border">Quick Start</a>
+                <a href="#examples" class="block text-lg py-2 border-b border-border">Examples</a>
+                <a href="#docs" class="block text-lg py-2 border-b border-border">Docs</a>
+                <a href="https://github.com/user/autoinit" target="_blank" class="block text-lg py-2">GitHub</a>
+            </nav>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle functionality with improved animations
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        
+        // Check for saved theme preference or default to system preference
+        const getInitialTheme = () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) return savedTheme;
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        };
+        
+        const currentTheme = getInitialTheme();
+        html.classList.toggle('dark', currentTheme === 'dark');
+        
+        themeToggle.addEventListener('click', () => {
+            const isDark = html.classList.contains('dark');
+            html.classList.toggle('dark', !isDark);
+            localStorage.setItem('theme', !isDark ? 'dark' : 'light');
+            
+            // Add a subtle animation effect
+            themeToggle.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                themeToggle.style.transform = 'scale(1)';
+            }, 150);
+        });
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                html.classList.toggle('dark', e.matches);
+            }
+        });
+
+        // Smooth scrolling for navigation links with offset for sticky header
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    const headerOffset = 80;
+                    const elementPosition = target.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                    
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Mobile menu functionality (if you add a hamburger button)
+        const mobileMenu = document.getElementById('mobile-menu');
+        const closeMobileMenu = document.getElementById('close-mobile-menu');
+        
+        if (closeMobileMenu) {
+            closeMobileMenu.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+            });
+        }
+
+        // Close mobile menu when clicking on links
+        document.querySelectorAll('#mobile-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+            });
+        });
+
+        // Intersection Observer for animation triggers
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe sections for scroll animations
+        document.querySelectorAll('section').forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(20px)';
+            section.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+            observer.observe(section);
+        });
+
+        // Copy code functionality (if you want to add copy buttons)
+        const addCopyButtons = () => {
+            document.querySelectorAll('.code-block').forEach(block => {
+                const copyButton = document.createElement('button');
+                copyButton.innerHTML = '📋';
+                copyButton.className = 'absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white p-2 rounded text-sm transition-colors';
+                copyButton.onclick = () => {
+                    navigator.clipboard.writeText(block.textContent);
+                    copyButton.innerHTML = '✅';
+                    setTimeout(() => copyButton.innerHTML = '📋', 2000);
+                };
+                
+                block.style.position = 'relative';
+                block.appendChild(copyButton);
+            });
+        };
+
+        // Initialize copy buttons
+        document.addEventListener('DOMContentLoaded', addCopyButtons);
+
+        // Performance: Lazy load non-critical resources
+        const lazyLoad = () => {
+            // Add any lazy loading logic here if needed
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', lazyLoad);
+    </script>
+</body>
+</html>

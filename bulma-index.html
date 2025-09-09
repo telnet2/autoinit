@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoInit - Component-Based Initialization Framework for Go</title>
+    <meta name="description" content="Eliminate initialization boilerplate. Build applications by composing self-contained components that initialize themselves.">
+    <meta name="keywords" content="Go, Golang, initialization, components, framework, microservices, dependency injection">
+    <meta name="author" content="AutoInit">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="AutoInit - Component-Based Initialization Framework for Go">
+    <meta property="og:description" content="Eliminate initialization boilerplate. Build applications by composing self-contained components that initialize themselves.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/og-image.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔧</text></svg>">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <!-- Bulma CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --primary-color: #3273dc;
+            --primary-dark: #2366d1;
+            --success-color: #48c78e;
+            --warning-color: #ffe08a;
+            --danger-color: #f14668;
+            --dark-bg: #1a1a1a;
+            --dark-surface: #2a2a2a;
+            --dark-text: #e0e0e0;
+            --transition: all 0.3s ease;
+        }
+
+        /* Typography */
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.7;
+        }
+
+        .title, .subtitle {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Code styling */
+        code {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+        }
+
+        pre[class*="language-"] {
+            font-family: 'Fira Code', monospace;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        /* Custom hero gradient */
+        .hero-gradient {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #667eea 100%);
+        }
+
+        /* Dark theme support */
+        [data-theme="dark"] {
+            background-color: var(--dark-bg);
+            color: var(--dark-text);
+        }
+
+        [data-theme="dark"] .hero {
+            background-color: var(--dark-surface);
+        }
+
+        [data-theme="dark"] .box {
+            background-color: var(--dark-surface);
+            color: var(--dark-text);
+            border: 1px solid #404040;
+        }
+
+        [data-theme="dark"] .navbar {
+            background-color: var(--dark-surface);
+            border-bottom: 1px solid #404040;
+        }
+
+        [data-theme="dark"] .navbar-item {
+            color: var(--dark-text);
+        }
+
+        [data-theme="dark"] .navbar-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        [data-theme="dark"] .section {
+            background-color: var(--dark-bg);
+        }
+
+        [data-theme="dark"] .footer {
+            background-color: var(--dark-surface);
+            color: var(--dark-text);
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Custom animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Custom button styles */
+        .button.is-primary-gradient {
+            background: linear-gradient(45deg, var(--primary-color), #667eea);
+            border: none;
+            transition: var(--transition);
+        }
+
+        .button.is-primary-gradient:hover {
+            background: linear-gradient(45deg, var(--primary-dark), #5a6fd8);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(50, 115, 220, 0.3);
+        }
+
+        /* Feature cards */
+        .feature-card {
+            transition: var(--transition);
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Icon styling */
+        .feature-icon {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, var(--primary-color), #667eea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        /* Code block improvements */
+        .code-container {
+            position: relative;
+            margin: 1.5rem 0;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: var(--transition);
+            opacity: 0;
+        }
+
+        .code-container:hover .copy-button {
+            opacity: 1;
+        }
+
+        .copy-button:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .hero-body .title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-body .subtitle {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Navigation styling */
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+
+        .navbar-brand .navbar-item {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        /* Custom spacing */
+        .section-large {
+            padding: 6rem 1.5rem;
+        }
+
+        /* Performance optimizations */
+        .lazy-load {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .lazy-load.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="#home">
+                <span class="icon is-large">
+                    <span style="font-size: 2rem;">🔧</span>
+                </span>
+                <span class="ml-2 has-text-weight-bold">AutoInit</span>
+            </a>
+
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMain">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+        </div>
+
+        <div id="navbarMain" class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="#features">Features</a>
+                <a class="navbar-item" href="#quickstart">Quick Start</a>
+                <a class="navbar-item" href="#examples">Examples</a>
+                <a class="navbar-item" href="#docs">Documentation</a>
+            </div>
+
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <div class="buttons">
+                        <button id="theme-toggle" class="button is-light" title="Toggle dark mode">
+                            <span class="icon">
+                                <i id="theme-icon" class="fas fa-moon"></i>
+                            </span>
+                        </button>
+                        <a class="button is-primary" href="https://github.com/user/autoinit" target="_blank">
+                            <span class="icon">
+                                <i class="fab fa-github"></i>
+                            </span>
+                            <span>GitHub</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero is-large hero-gradient">
+        <div class="hero-body">
+            <div class="container has-text-centered">
+                <div class="fade-in-up">
+                    <span class="tag is-white is-medium mb-4">
+                        <span class="icon">
+                            <i class="fas fa-rocket"></i>
+                        </span>
+                        <span class="ml-2">Component-Based Initialization Framework for Go</span>
+                    </span>
+                    <h1 class="title is-1 has-text-white mb-4">
+                        Stop writing <span class="has-text-warning">initialization</span> code
+                    </h1>
+                    <h2 class="subtitle is-4 has-text-white-ter mb-6">
+                        Build applications by composing self-contained components that initialize themselves. 
+                        Eliminate boilerplate and scale effortlessly.
+                    </h2>
+                    <div class="buttons is-centered">
+                        <a href="#quickstart" class="button is-white is-large">
+                            <span class="icon">
+                                <i class="fas fa-play"></i>
+                            </span>
+                            <span>Get Started</span>
+                        </a>
+                        <a href="https://github.com/user/autoinit" target="_blank" class="button is-light is-large is-outlined">
+                            <span class="icon">
+                                <i class="fab fa-github"></i>
+                            </span>
+                            <span>View on GitHub</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem/Solution Section -->
+    <section class="section section-large has-background-light">
+        <div class="container">
+            <div class="columns is-variable is-8">
+                <div class="column">
+                    <div class="box feature-card">
+                        <div class="has-text-centered mb-4">
+                            <span class="icon is-large has-text-danger">
+                                <span style="font-size: 3rem;">😓</span>
+                            </span>
+                            <h3 class="title is-4 has-text-danger">Before AutoInit</h3>
+                        </div>
+                        <div class="code-container">
+                            <button class="copy-button" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <pre><code class="language-go">// Manual initialization hell
+func initializeApp() error {
+    app := &App{}
+    
+    // Initialize database
+    app.Database = &Database{}
+    if err := app.Database.Connect(); err != nil {
+        return err
+    }
+    
+    // Initialize cache (needs database)
+    app.Cache = &Cache{DB: app.Database}
+    if err := app.Cache.Setup(); err != nil {
+        return err
+    }
+    
+    // Initialize auth (needs database and cache)
+    app.Auth = &Auth{DB: app.Database, Cache: app.Cache}
+    if err := app.Auth.LoadConfig(); err != nil {
+        return err
+    }
+    
+    // ... repeat for every component
+    // ... maintain dependency order manually
+    // ... handle errors everywhere
+    return nil
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column">
+                    <div class="box feature-card">
+                        <div class="has-text-centered mb-4">
+                            <span class="icon is-large has-text-success">
+                                <span style="font-size: 3rem;">🎉</span>
+                            </span>
+                            <h3 class="title is-4 has-text-success">After AutoInit</h3>
+                        </div>
+                        <div class="code-container">
+                            <button class="copy-button" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <pre><code class="language-go">// Just plug components and go!
+type App struct {
+    Database *Database  // Self-initializing
+    Cache    *Cache     // Automatically wired  
+    Auth     *Auth      // Dependency-aware
+    Metrics  *Metrics   // Plug-and-play ready
+}
+
+func initializeApp() error {
+    app := &App{
+        Database: &Database{},
+        Cache:    &Cache{},
+        Auth:     &Auth{},
+        Metrics:  &Metrics{},
+    }
+    
+    // One call initializes everything!
+    return autoinit.AutoInit(context.Background(), app)
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section section-large">
+        <div class="container">
+            <div class="has-text-centered mb-6">
+                <h2 class="title is-2">Powerful Features</h2>
+                <p class="subtitle is-5">Everything you need for component-based initialization</p>
+            </div>
+
+            <div class="columns is-multiline">
+                <div class="column is-4">
+                    <div class="box feature-card has-text-centered">
+                        <div class="feature-icon">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <h3 class="title is-5">Zero Config</h3>
+                        <p>Drop components in, they initialize automatically. Eliminates boilerplate and wiring code completely.</p>
+                    </div>
+                </div>
+
+                <div class="column is-4">
+                    <div class="box feature-card has-text-centered">
+                        <div class="feature-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h3 class="title is-5">Smart Discovery</h3>
+                        <p>Automatically finds and calls the right Init method. Supports 3 different initialization patterns.</p>
+                    </div>
+                </div>
+
+                <div class="column is-4">
+                    <div class="box feature-card has-text-centered">
+                        <div class="feature-icon">
+                            <i class="fas fa-bug"></i>
+                        </div>
+                        <h3 class="title is-5">Rich Error Context</h3>
+                        <p>Shows exact path when initialization fails. Debug complex issues in seconds, not hours.</p>
+                    </div>
+                </div>
+
+                <div class="column is-4">
+                    <div class="box feature-card has-text-centered">
+                        <div class="feature-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <h3 class="title is-5">Lifecycle Hooks</h3>
+                        <p>Pre/Post initialization control for custom initialization flows and advanced scenarios.</p>
+                    </div>
+                </div>
+
+                <div class="column is-4">
+                    <div class="box feature-card has-text-centered">
+                        <div class="feature-icon">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <h3 class="title is-5">Tag-Based Control</h3>
+                        <p>Use struct tags for explicit control: <code>autoinit:"-"</code> to skip, <code>autoinit:"init"</code> to include.</p>
+                    </div>
+                </div>
+
+                <div class="column is-4">
+                    <div class="box feature-card has-text-centered">
+                        <div class="feature-icon">
+                            <i class="fas fa-sitemap"></i>
+                        </div>
+                        <h3 class="title is-5">Component Discovery</h3>
+                        <p>Find and use sibling/ancestor components. True dependency injection without heavyweight frameworks.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section id="quickstart" class="section section-large has-background-light">
+        <div class="container">
+            <div class="has-text-centered mb-6">
+                <h2 class="title is-2">Quick Start</h2>
+                <p class="subtitle is-5">Get up and running in minutes</p>
+            </div>
+
+            <div class="columns">
+                <div class="column is-8 is-offset-2">
+                    <!-- Step 1 -->
+                    <div class="box mb-5">
+                        <div class="level mb-4">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <span class="tag is-primary is-large is-rounded">1</span>
+                                    <h3 class="title is-4 ml-3">Install</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-container">
+                            <button class="copy-button" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <pre><code class="language-bash">go get github.com/user/autoinit</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="box mb-5">
+                        <div class="level mb-4">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <span class="tag is-primary is-large is-rounded">2</span>
+                                    <h3 class="title is-4 ml-3">Define Components</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-container">
+                            <button class="copy-button" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <pre><code class="language-go">type Database struct {
+    Connected bool
+}
+
+func (d *Database) Init(ctx context.Context) error {
+    d.Connected = true
+    fmt.Println("📊 Database connected!")
+    return nil
+}
+
+type Cache struct {
+    Ready bool
+}
+
+func (c *Cache) Init(ctx context.Context) error {
+    c.Ready = true
+    fmt.Println("⚡ Cache ready!")
+    return nil
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="box">
+                        <div class="level mb-4">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <span class="tag is-primary is-large is-rounded">3</span>
+                                    <h3 class="title is-4 ml-3">Compose and Initialize</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-container">
+                            <button class="copy-button" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <pre><code class="language-go">type App struct {
+    DB    *Database
+    Cache *Cache
+}
+
+func main() {
+    app := &App{
+        DB:    &Database{},
+        Cache: &Cache{},
+    }
+    
+    // 🎉 One call to initialize everything!
+    if err := autoinit.AutoInit(context.Background(), app); err != nil {
+        panic(err)
+    }
+    
+    fmt.Println("🚀 App ready!")
+    // Output:
+    // 📊 Database connected!
+    // ⚡ Cache ready!
+    // 🚀 App ready!
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Examples Section -->
+    <section id="examples" class="section section-large">
+        <div class="container">
+            <div class="has-text-centered mb-6">
+                <h2 class="title is-2">Real-World Examples</h2>
+                <p class="subtitle is-5">See AutoInit in production scenarios</p>
+            </div>
+
+            <div class="columns is-variable is-8">
+                <div class="column">
+                    <div class="box">
+                        <div class="has-text-centered mb-4">
+                            <span class="icon is-large">
+                                <span style="font-size: 3rem;">🏗️</span>
+                            </span>
+                            <h3 class="title is-4">Microservice Application</h3>
+                        </div>
+                        <div class="code-container">
+                            <button class="copy-button" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <pre><code class="language-go">type MicroService struct {
+    // Infrastructure
+    Database *PostgresDB    `autoinit:"init"`
+    Redis    *RedisCache    `autoinit:"init"`
+    Logger   *StructuredLogger
+    
+    // Business Logic
+    UserService    *UserService
+    OrderService   *OrderService
+    PaymentService *PaymentService
+    
+    // External Services
+    EmailProvider *EmailProvider
+    MetricsClient *PrometheusClient
+    
+    // HTTP Server
+    Router *HTTPRouter
+}
+
+// Start your entire microservice with one call!
+func main() {
+    service := &MicroService{
+        Database: &PostgresDB{DSN: os.Getenv("DB_URL")},
+        Redis:    &RedisCache{URL: os.Getenv("REDIS_URL")},
+        // ... initialize other components
+    }
+    
+    if err := autoinit.AutoInit(context.Background(), service); err != nil {
+        log.Fatal("Failed to start service:", err)
+    }
+    
+    log.Println("🚀 Microservice ready!")
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column">
+                    <div class="box">
+                        <div class="has-text-centered mb-4">
+                            <span class="icon is-large">
+                                <span style="font-size: 3rem;">🔌</span>
+                            </span>
+                            <h3 class="title is-4">Plugin System</h3>
+                        </div>
+                        <div class="code-container">
+                            <button class="copy-button" onclick="copyCode(this)">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <pre><code class="language-go">type PluginSystem struct {
+    // Core always present
+    Core *CoreEngine
+    
+    // Plugins - just add to enable!
+    AuthPlugin      *AuthPlugin
+    MetricsPlugin   *MetricsPlugin
+    CachePlugin     *CachePlugin
+    RateLimitPlugin *RateLimitPlugin
+}
+
+func main() {
+    system := &PluginSystem{Core: &CoreEngine{}}
+    
+    // Conditionally add plugins
+    if needsAuth() {
+        system.AuthPlugin = &AuthPlugin{}
+    }
+    if isProduction() {
+        system.MetricsPlugin = &MetricsPlugin{}
+        system.RateLimitPlugin = &RateLimitPlugin{}
+    }
+    
+    // One call initializes everything plugged in!
+    autoinit.AutoInit(context.Background(), system)
+    
+    log.Println("🔌 Plugin system ready!")
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation Section -->
+    <section id="docs" class="section section-large has-background-light">
+        <div class="container">
+            <div class="has-text-centered mb-6">
+                <h2 class="title is-2">Documentation</h2>
+                <p class="subtitle is-5">Everything you need to master AutoInit</p>
+            </div>
+
+            <div class="columns is-multiline">
+                <div class="column is-4">
+                    <a href="https://github.com/user/autoinit/blob/main/COMPONENTS.md" target="_blank" class="box feature-card is-block">
+                        <div class="has-text-centered">
+                            <span class="feature-icon">
+                                <i class="fas fa-puzzle-piece"></i>
+                            </span>
+                            <h3 class="title is-5">Components Guide</h3>
+                            <p>Learn component-based architecture patterns and implementation best practices.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="column is-4">
+                    <a href="https://github.com/user/autoinit/blob/main/FINDER.md" target="_blank" class="box feature-card is-block">
+                        <div class="has-text-centered">
+                            <span class="feature-icon">
+                                <i class="fas fa-search-plus"></i>
+                            </span>
+                            <h3 class="title is-5">Component Discovery</h3>
+                            <p>Master the component finder system for powerful dependency injection patterns.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="column is-4">
+                    <a href="https://github.com/user/autoinit/blob/main/HOOKS.md" target="_blank" class="box feature-card is-block">
+                        <div class="has-text-centered">
+                            <span class="feature-icon">
+                                <i class="fas fa-anchor"></i>
+                            </span>
+                            <h3 class="title is-5">Lifecycle Hooks</h3>
+                            <p>Customize initialization flows with Pre/Post hooks and field interceptors.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="column is-4">
+                    <a href="https://github.com/user/autoinit/blob/main/TAGS.md" target="_blank" class="box feature-card is-block">
+                        <div class="has-text-centered">
+                            <span class="feature-icon">
+                                <i class="fas fa-tag"></i>
+                            </span>
+                            <h3 class="title is-5">Tag-Based Control</h3>
+                            <p>Use struct tags to control which components get initialized and when.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="column is-4">
+                    <a href="https://github.com/user/autoinit/blob/main/CROSS_DEPS.md" target="_blank" class="box feature-card is-block">
+                        <div class="has-text-centered">
+                            <span class="feature-icon">
+                                <i class="fas fa-project-diagram"></i>
+                            </span>
+                            <h3 class="title is-5">Cross Dependencies</h3>
+                            <p>Handle complex component dependencies with various architectural patterns.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="column is-4">
+                    <a href="https://pkg.go.dev/github.com/user/autoinit" target="_blank" class="box feature-card is-block">
+                        <div class="has-text-centered">
+                            <span class="feature-icon">
+                                <i class="fas fa-book"></i>
+                            </span>
+                            <h3 class="title is-5">API Reference</h3>
+                            <p>Complete API documentation with examples and comprehensive type information.</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="section section-large hero-gradient">
+        <div class="container has-text-centered">
+            <h2 class="title is-2 has-text-white mb-4">Ready to get started?</h2>
+            <p class="subtitle is-4 has-text-white-ter mb-6">
+                Stop writing initialization code. Start building features that matter.
+            </p>
+            <div class="buttons is-centered">
+                <a href="https://github.com/user/autoinit" target="_blank" class="button is-white is-large">
+                    <span class="icon">
+                        <i class="fab fa-github"></i>
+                    </span>
+                    <span>Get Started on GitHub</span>
+                </a>
+                <a href="https://pkg.go.dev/github.com/user/autoinit" target="_blank" class="button is-light is-large is-outlined">
+                    <span class="icon">
+                        <i class="fas fa-book"></i>
+                    </span>
+                    <span>View Documentation</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="content has-text-centered">
+            <div class="columns is-vcentered">
+                <div class="column">
+                    <div class="level">
+                        <div class="level-item">
+                            <div>
+                                <span class="icon is-large">
+                                    <span style="font-size: 2rem;">🔧</span>
+                                </span>
+                                <p class="title is-5">AutoInit</p>
+                                <p class="subtitle is-6">Built with ❤️ for the Go community</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-narrow">
+                    <div class="buttons">
+                        <a href="https://github.com/user/autoinit" target="_blank" class="button is-light">
+                            <span class="icon">
+                                <i class="fab fa-github"></i>
+                            </span>
+                            <span>GitHub</span>
+                        </a>
+                    </div>
+                    <p class="is-size-7">MIT License</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Mobile navigation toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+
+            if ($navbarBurgers.length > 0) {
+                $navbarBurgers.forEach(el => {
+                    el.addEventListener('click', () => {
+                        const target = el.dataset.target;
+                        const $target = document.getElementById(target);
+                        el.classList.toggle('is-active');
+                        $target.classList.toggle('is-active');
+                    });
+                });
+            }
+        });
+
+        // Dark theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const body = document.body;
+
+        // Check for saved theme or default to light
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        body.setAttribute('data-theme', currentTheme);
+        updateThemeIcon(currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+
+        function updateThemeIcon(theme) {
+            if (theme === 'dark') {
+                themeIcon.className = 'fas fa-sun';
+                themeToggle.className = 'button is-warning';
+            } else {
+                themeIcon.className = 'fas fa-moon';
+                themeToggle.className = 'button is-light';
+            }
+        }
+
+        // Copy code functionality
+        function copyCode(button) {
+            const codeBlock = button.parentNode.querySelector('code');
+            const text = codeBlock.innerText;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const originalIcon = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i>';
+                button.style.background = 'rgba(72, 199, 142, 0.8)';
+                
+                setTimeout(() => {
+                    button.innerHTML = originalIcon;
+                    button.style.background = 'rgba(0, 0, 0, 0.7)';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy code: ', err);
+            });
+        }
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    const headerOffset = 70;
+                    const elementPosition = target.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                    
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Lazy loading animation
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('loaded');
+                }
+            });
+        }, observerOptions);
+
+        // Observe elements for lazy loading
+        document.querySelectorAll('.lazy-load').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Add lazy loading class to sections
+        document.querySelectorAll('.section').forEach(section => {
+            section.classList.add('lazy-load');
+            observer.observe(section);
+        });
+
+        // Initialize syntax highlighting
+        if (typeof Prism !== 'undefined') {
+            Prism.highlightAll();
+        }
+    </script>
+</body>
+</html>
