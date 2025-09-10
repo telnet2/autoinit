@@ -75,7 +75,10 @@ func getParentChain(ctx context.Context) *ParentChain {
 	if ctx == nil {
 		return nil
 	}
-	chain, _ := ctx.Value(parentChainKey).(*ParentChain)
+	chain, ok := ctx.Value(parentChainKey).(*ParentChain)
+	if !ok {
+		return nil
+	}
 	return chain
 }
 
@@ -605,41 +608,26 @@ func callInitIfExists(ctx context.Context, v reflect.Value, parent reflect.Value
 
 // callPreInit calls PreInit hook if the struct implements it
 func callPreInit(ctx context.Context, v reflect.Value, path []string, logger *zerolog.Logger) error {
-	pathStr := pathToString(path)
-
-	// Get a pointer to the value if it's not already a pointer
-	ptr := v
-	if v.Kind() != reflect.Ptr && v.CanAddr() {
-		ptr = v.Addr()
-	}
-
-	if preInit, ok := ptr.Interface().(PreInitializer); ok {
-		logger.Trace().
-			Str("path", pathStr).
-			Str("type", ptr.Type().String()).
-			Msg("Calling PreInit")
-
-		if err := preInit.PreInit(ctx); err != nil {
-			logger.Error().
-				Str("path", pathStr).
-				Err(err).
-				Msg("PreInit failed")
-			return &InitError{
-				Path:      path,
-				FieldType: ptr.Type().String(),
-				Cause:     err,
-			}
+	return callInitHook(ctx, v, path, logger, "PreInit", func(ptr reflect.Value) error {
+		if preInit, ok := ptr.Interface().(PreInitializer); ok {
+			return preInit.PreInit(ctx)
 		}
-		logger.Trace().
-			Str("path", pathStr).
-			Msg("PreInit completed successfully")
-	}
-
-	return nil
+		return nil
+	})
 }
 
 // callPostInit calls PostInit hook if the struct implements it
 func callPostInit(ctx context.Context, v reflect.Value, path []string, logger *zerolog.Logger) error {
+	return callInitHook(ctx, v, path, logger, "PostInit", func(ptr reflect.Value) error {
+		if postInit, ok := ptr.Interface().(PostInitializer); ok {
+			return postInit.PostInit(ctx)
+		}
+		return nil
+	})
+}
+
+// callInitHook is a helper function to call initialization hooks
+func callInitHook(ctx context.Context, v reflect.Value, path []string, logger *zerolog.Logger, hookName string, hookFunc func(reflect.Value) error) error {
 	pathStr := pathToString(path)
 
 	// Get a pointer to the value if it's not already a pointer
@@ -648,154 +636,12 @@ func callPostInit(ctx context.Context, v reflect.Value, path []string, logger *z
 		ptr = v.Addr()
 	}
 
-	if postInit, ok := ptr.Interface().(PostInitializer); ok {
-		logger.Trace().
-			Str("path", pathStr).
-			Str("type", ptr.Type().String()).
-			Msg("Calling PostInit")
+	logger.Trace().
+		Str("path", pathStr).
+		Str("type", ptr.Type().String()).
+		Msg("Calling " + hookName)
 
-		if err := postInit.PostInit(ctx); err != nil {
-			logger.Error().
-				Str("path", pathStr).
-				Err(err).
-				Msg("PostInit failed")
-			return &InitError{
-				Path:      path,
-				FieldType: ptr.Type().String(),
-				Cause:     err,
-			}
-		}
-		logger.Trace().
-			Str("path", pathStr).
-			Msg("PostInit completed successfully")
-	}
-
-	return nil
-}
-
-// callPreFieldHook calls parent's PreFieldInit hook if it implements PreFieldHook
-func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger) error {
-	if !parent.IsValid() {
-		return nil
-	}
-
-	// Get a pointer to the parent if it's not already a pointer
-	parentPtr := parent
-	if parent.Kind() != reflect.Ptr && parent.CanAddr() {
-		parentPtr = parent.Addr()
-	}
-
-	// Always pass a pointer to the field to allow modification
-	var fieldInterface interface{}
-	if fieldValue.CanInterface() {
-		if fieldValue.Kind() == reflect.Ptr {
-			// Already a pointer
-			fieldInterface = fieldValue.Interface()
-		} else if fieldValue.CanAddr() {
-			// Get pointer to the field
-			fieldInterface = fieldValue.Addr().Interface()
-		} else {
-			// This shouldn't happen for struct fields, but handle it gracefully
-			// Log a warning and pass the value itself
-			logger.Warn().
-				Str("field", fieldName).
-				Str("kind", fieldValue.Kind().String()).
-				Msg("Cannot get pointer to field, passing value instead")
-			fieldInterface = fieldValue.Interface()
-		}
-	}
-
-	if hook, ok := parentPtr.Interface().(PreFieldHook); ok {
-		logger.Trace().
-			Str("parent_type", parentPtr.Type().String()).
-			Str("field", fieldName).
-			Msg("Calling PreFieldInit hook")
-
-		if err := hook.PreFieldInit(ctx, fieldName, fieldInterface); err != nil {
-			logger.Error().
-				Str("field", fieldName).
-				Err(err).
-				Msg("PreFieldInit hook failed")
-			return err
-		}
-		logger.Trace().
-			Str("field", fieldName).
-			Msg("PreFieldInit hook completed")
-	}
-
-	return nil
-}
-
-// callPostFieldHook calls parent's PostFieldInit hook if it implements PostFieldHook
-func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger) error {
-	if !parent.IsValid() {
-		return nil
-	}
-
-	// Get a pointer to the parent if it's not already a pointer
-	parentPtr := parent
-	if parent.Kind() != reflect.Ptr && parent.CanAddr() {
-		parentPtr = parent.Addr()
-	}
-
-	// Always pass a pointer to the field to allow modification
-	var fieldInterface interface{}
-	if fieldValue.CanInterface() {
-		if fieldValue.Kind() == reflect.Ptr {
-			// Already a pointer
-			fieldInterface = fieldValue.Interface()
-		} else if fieldValue.CanAddr() {
-			// Get pointer to the field
-			fieldInterface = fieldValue.Addr().Interface()
-		} else {
-			// This shouldn't happen for struct fields, but handle it gracefully
-			// Log a warning and pass the value itself
-			logger.Warn().
-				Str("field", fieldName).
-				Str("kind", fieldValue.Kind().String()).
-				Msg("Cannot get pointer to field, passing value instead")
-			fieldInterface = fieldValue.Interface()
-		}
-	}
-
-	if hook, ok := parentPtr.Interface().(PostFieldHook); ok {
-		logger.Trace().
-			Str("parent_type", parentPtr.Type().String()).
-			Str("field", fieldName).
-			Msg("Calling PostFieldInit hook")
-
-		if err := hook.PostFieldInit(ctx, fieldName, fieldInterface); err != nil {
-			logger.Error().
-				Str("field", fieldName).
-				Err(err).
-				Msg("PostFieldInit hook failed")
-			return err
-		}
-		logger.Trace().
-			Str("field", fieldName).
-			Msg("PostFieldInit hook completed")
-	}
-
-	return nil
-}
-
-// callHookIfExists is a helper function to call initialization hooks
-func callHookIfExists(ctx context.Context, v reflect.Value, path []string, logger *zerolog.Logger, hookName string, hookFunc func(reflect.Value) error) error {
-	pathStr := pathToString(path)
-
-	// Get a pointer to the value if it's not already a pointer
-	ptr := v
-	if v.Kind() != reflect.Ptr && v.CanAddr() {
-		ptr = v.Addr()
-	}
-
-	err := hookFunc(ptr)
-	if err != nil {
-		logger.Trace().
-			Str("path", pathStr).
-			Str("type", ptr.Type().String()).
-			Msg("Calling " + hookName)
-
+	if err := hookFunc(ptr); err != nil {
 		logger.Error().
 			Str("path", pathStr).
 			Err(err).
@@ -805,21 +651,36 @@ func callHookIfExists(ctx context.Context, v reflect.Value, path []string, logge
 			FieldType: ptr.Type().String(),
 			Cause:     err,
 		}
-	} else if err == nil {
-		// Only log if hook was actually called - check if interface was implemented
-		logger.Trace().
-			Str("path", pathStr).
-			Str("type", ptr.Type().String()).
-			Msg("Calling " + hookName)
-		logger.Trace().
-			Str("path", pathStr).
-			Msg(hookName + " completed successfully")
 	}
+
+	logger.Trace().
+		Str("path", pathStr).
+		Msg(hookName + " completed successfully")
 
 	return nil
 }
 
-// callFieldHook is a helper function for field-level hooks
+// callPreFieldHook calls parent's PreFieldInit hook if it implements PreFieldHook
+func callPreFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger) error {
+	return callFieldHook(ctx, parent, fieldName, fieldValue, logger, "PreFieldInit", func(hook interface{}, fieldInterface interface{}) error {
+		if h, ok := hook.(PreFieldHook); ok {
+			return h.PreFieldInit(ctx, fieldName, fieldInterface)
+		}
+		return nil
+	})
+}
+
+// callPostFieldHook calls parent's PostFieldInit hook if it implements PostFieldHook
+func callPostFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger) error {
+	return callFieldHook(ctx, parent, fieldName, fieldValue, logger, "PostFieldInit", func(hook interface{}, fieldInterface interface{}) error {
+		if h, ok := hook.(PostFieldHook); ok {
+			return h.PostFieldInit(ctx, fieldName, fieldInterface)
+		}
+		return nil
+	})
+}
+
+// callFieldHook is a helper function to call field hooks
 func callFieldHook(ctx context.Context, parent reflect.Value, fieldName string, fieldValue reflect.Value, logger *zerolog.Logger, hookName string, hookFunc func(interface{}, interface{}) error) error {
 	if !parent.IsValid() {
 		return nil
@@ -851,13 +712,12 @@ func callFieldHook(ctx context.Context, parent reflect.Value, fieldName string, 
 		}
 	}
 
-	err := hookFunc(parentPtr.Interface(), fieldInterface)
-	if err != nil {
-		logger.Trace().
-			Str("parent_type", parentPtr.Type().String()).
-			Str("field", fieldName).
-			Msg("Calling " + hookName + " hook")
+	logger.Trace().
+		Str("parent_type", parentPtr.Type().String()).
+		Str("field", fieldName).
+		Msg("Calling " + hookName + " hook")
 
+	if err := hookFunc(parentPtr.Interface(), fieldInterface); err != nil {
 		logger.Error().
 			Str("field", fieldName).
 			Err(err).
@@ -865,11 +725,6 @@ func callFieldHook(ctx context.Context, parent reflect.Value, fieldName string, 
 		return err
 	}
 
-	// Only log if hook was actually called - check if interface was implemented
-	logger.Trace().
-		Str("parent_type", parentPtr.Type().String()).
-		Str("field", fieldName).
-		Msg("Calling " + hookName + " hook")
 	logger.Trace().
 		Str("field", fieldName).
 		Msg(hookName + " hook completed")

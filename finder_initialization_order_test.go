@@ -18,7 +18,7 @@ func (l *OrderLogger) Init(ctx context.Context, parent interface{}) error {
 	// Try to find a sibling that should be initialized after this component
 	finder := autoinit.NewComponentFinder(ctx, l, parent)
 
-	if sibling := finder.Find(autoinit.SearchOption{
+	if sibling := finder.Find(&autoinit.SearchOption{
 		ByFieldName: "LaterComponent",
 	}); sibling != nil {
 		if laterComp, ok := sibling.(*LaterComponent); ok {
@@ -90,7 +90,7 @@ func (e *EarlyComponent) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, e, parent)
 
 	// Look for LateComponent
-	if late := finder.Find(autoinit.SearchOption{
+	if late := finder.Find(&autoinit.SearchOption{
 		ByFieldName: "LateComponent",
 	}); late != nil {
 		e.foundLate = true
@@ -114,7 +114,7 @@ func (l *LateComponent) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, l, parent)
 
 	// Look for EarlyComponent (should find it and it should be initialized)
-	if early := finder.Find(autoinit.SearchOption{
+	if early := finder.Find(&autoinit.SearchOption{
 		ByFieldName: "EarlyComponent",
 	}); early != nil {
 		l.foundEarly = true

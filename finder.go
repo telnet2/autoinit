@@ -43,12 +43,12 @@ func NewComponentFinder(ctx context.Context, self, parent interface{}) *Componen
 // 1. Siblings at current level
 // 2. Parent's siblings (aunts/uncles)
 // 3. Grandparent's siblings, etc.
-func (cf *ComponentFinder) Find(opt SearchOption) interface{} {
+func (cf *ComponentFinder) Find(opt *SearchOption) interface{} {
 	return cf.searchHierarchy(cf.parent, cf.self, opt, 0)
 }
 
 // FindSibling searches only among siblings at the same level
-func (cf *ComponentFinder) FindSibling(opt SearchOption) interface{} {
+func (cf *ComponentFinder) FindSibling(opt *SearchOption) interface{} {
 	if cf.parent == nil {
 		return nil
 	}
@@ -56,12 +56,12 @@ func (cf *ComponentFinder) FindSibling(opt SearchOption) interface{} {
 }
 
 // FindAncestor searches up the parent chain for a matching component
-func (cf *ComponentFinder) FindAncestor(opt SearchOption) interface{} {
+func (cf *ComponentFinder) FindAncestor(opt *SearchOption) interface{} {
 	return cf.searchAncestors(cf.parent, opt)
 }
 
 // searchHierarchy implements the full search algorithm
-func (cf *ComponentFinder) searchHierarchy(current interface{}, exclude interface{}, opt SearchOption, depth int) interface{} {
+func (cf *ComponentFinder) searchHierarchy(current interface{}, exclude interface{}, opt *SearchOption, depth int) interface{} {
 	if current == nil || depth > 10 { // Prevent infinite recursion
 		return nil
 	}
@@ -97,7 +97,7 @@ func (cf *ComponentFinder) searchHierarchy(current interface{}, exclude interfac
 }
 
 // searchSiblings searches among sibling components in the same parent
-func (cf *ComponentFinder) searchSiblings(parent interface{}, exclude interface{}, opt SearchOption) interface{} {
+func (cf *ComponentFinder) searchSiblings(parent interface{}, exclude interface{}, opt *SearchOption) interface{} {
 	if parent == nil {
 		return nil
 	}
@@ -187,7 +187,7 @@ func (cf *ComponentFinder) searchSiblings(parent interface{}, exclude interface{
 }
 
 // matchesOption checks if a field matches the search criteria
-func (cf *ComponentFinder) matchesOption(field reflect.Value, fieldType *reflect.StructField, opt SearchOption) bool {
+func (cf *ComponentFinder) matchesOption(field reflect.Value, fieldType *reflect.StructField, opt *SearchOption) bool {
 	// Match by type
 	if opt.ByType != nil {
 		if cf.matchesType(field, opt.ByType) {
@@ -223,7 +223,7 @@ func (cf *ComponentFinder) matchesOption(field reflect.Value, fieldType *reflect
 }
 
 // matchesValue checks if a value matches the search criteria (for elements in collections)
-func (cf *ComponentFinder) matchesValue(val reflect.Value, opt SearchOption) bool {
+func (cf *ComponentFinder) matchesValue(val reflect.Value, opt *SearchOption) bool {
 	if opt.ByType != nil {
 		return cf.matchesType(val, opt.ByType)
 	}
@@ -276,7 +276,7 @@ func (cf *ComponentFinder) matchesType(field reflect.Value, targetType reflect.T
 }
 
 // searchAncestors searches up the parent chain
-func (cf *ComponentFinder) searchAncestors(parent interface{}, opt SearchOption) interface{} {
+func (cf *ComponentFinder) searchAncestors(parent interface{}, opt *SearchOption) interface{} {
 	if chain := cf.getParentChain(); chain != nil {
 		// Skip the first item (self) and search up
 		for i := 1; i < len(chain.chain); i++ {
@@ -301,7 +301,10 @@ func (cf *ComponentFinder) getParentChain() *ParentChain {
 	if cf.ctx == nil {
 		return nil
 	}
-	chain, _ := cf.ctx.Value(parentChainKey).(*ParentChain)
+	chain, ok := cf.ctx.Value(parentChainKey).(*ParentChain)
+	if !ok {
+		return nil
+	}
 	return chain
 }
 
@@ -354,7 +357,7 @@ func WithComponentSearch(ctx context.Context) context.Context {
 func FindByType[T any](ctx context.Context, self, parent interface{}) T {
 	var zero T
 	finder := NewComponentFinder(ctx, self, parent)
-	result := finder.Find(SearchOption{
+	result := finder.Find(&SearchOption{
 		ByType: reflect.TypeOf((*T)(nil)).Elem(),
 	})
 	if result != nil {
@@ -376,7 +379,7 @@ func FindByInterface[T any](ctx context.Context, self, parent interface{}) T {
 		return zero
 	}
 
-	result := finder.Find(SearchOption{
+	result := finder.Find(&SearchOption{
 		ByType: interfaceType,
 	})
 	if result != nil {
@@ -390,7 +393,7 @@ func FindByInterface[T any](ctx context.Context, self, parent interface{}) T {
 // FindByName searches for a component by field name
 func FindByName(ctx context.Context, self, parent interface{}, name string) interface{} {
 	finder := NewComponentFinder(ctx, self, parent)
-	return finder.Find(SearchOption{
+	return finder.Find(&SearchOption{
 		ByFieldName: name,
 	})
 }
@@ -398,7 +401,7 @@ func FindByName(ctx context.Context, self, parent interface{}, name string) inte
 // FindByTag searches for a component by JSON tag
 func FindByTag(ctx context.Context, self, parent interface{}, tag string) interface{} {
 	finder := NewComponentFinder(ctx, self, parent)
-	return finder.Find(SearchOption{
+	return finder.Find(&SearchOption{
 		ByJSONTag: tag,
 	})
 }
@@ -406,7 +409,7 @@ func FindByTag(ctx context.Context, self, parent interface{}, tag string) interf
 // FindByCustomTag searches for a component by custom tag
 func FindByCustomTag(ctx context.Context, self, parent interface{}, tagKey, tagValue string) interface{} {
 	finder := NewComponentFinder(ctx, self, parent)
-	return finder.Find(SearchOption{
+	return finder.Find(&SearchOption{
 		ByCustomTag: tagValue,
 		TagKey:      tagKey,
 	})

@@ -55,28 +55,28 @@ func (s *SearcherComponent) Init(ctx context.Context, parent interface{}) error 
 	finder := autoinit.NewComponentFinder(ctx, s, parent)
 
 	// Try to find value component (should get pointer to it)
-	if val := finder.Find(autoinit.SearchOption{
+	if val := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*ValueComponent)(nil)),
 	}); val != nil {
 		s.foundValue = val.(*ValueComponent)
 	}
 
 	// Try to find pointer component
-	if ptr := finder.Find(autoinit.SearchOption{
+	if ptr := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*PointerComponent)(nil)),
 	}); ptr != nil {
 		s.foundPointer = ptr.(*PointerComponent)
 	}
 
 	// Try to find by interface
-	if provider := finder.Find(autoinit.SearchOption{
+	if provider := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*DataProvider)(nil)).Elem(),
 	}); provider != nil {
 		s.foundInterface = provider.(DataProvider)
 	}
 
 	// Try to find uninitialized (nil) field
-	if nilField := finder.Find(autoinit.SearchOption{
+	if nilField := finder.Find(&autoinit.SearchOption{
 		ByFieldName: "UninitializedPtr",
 	}); nilField != nil {
 		s.foundNilField = nilField
@@ -197,7 +197,7 @@ type ModifierComponent struct {
 
 func (m *ModifierComponent) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, m, parent)
-	if val := finder.Find(autoinit.SearchOption{
+	if val := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*ValueComponent)(nil)),
 	}); val != nil {
 		m.target = val.(*ValueComponent)
@@ -275,7 +275,7 @@ func (c *ConfigSearcher) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, c, parent)
 
 	// Try to find first ConfigProvider
-	if provider := finder.Find(autoinit.SearchOption{
+	if provider := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*ConfigProvider)(nil)).Elem(),
 	}); provider != nil {
 		c.foundConfigs = append(c.foundConfigs, provider.(ConfigProvider))

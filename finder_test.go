@@ -28,7 +28,7 @@ type FinderCache struct {
 func (c *FinderCache) Init(ctx context.Context, parent interface{}) error {
 	// Find logger sibling by type
 	finder := autoinit.NewComponentFinder(ctx, c, parent)
-	if logger := finder.Find(autoinit.SearchOption{
+	if logger := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*FinderLogger)(nil)),
 	}); logger != nil {
 		c.logger = logger.(*FinderLogger)
@@ -48,14 +48,14 @@ func (d *FinderDatabase) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, d, parent)
 
 	// Find logger by field name
-	if logger := finder.Find(autoinit.SearchOption{
+	if logger := finder.Find(&autoinit.SearchOption{
 		ByFieldName: "Logger",
 	}); logger != nil {
 		d.logger = logger.(*FinderLogger)
 	}
 
 	// Find cache by JSON tag
-	if cache := finder.Find(autoinit.SearchOption{
+	if cache := finder.Find(&autoinit.SearchOption{
 		ByJSONTag: "cache",
 	}); cache != nil {
 		d.cache = cache.(*FinderCache)
@@ -78,19 +78,19 @@ func (s *FinderService) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, s, parent)
 
 	// Should find these at various levels in the hierarchy
-	if logger := finder.Find(autoinit.SearchOption{
+	if logger := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*FinderLogger)(nil)),
 	}); logger != nil {
 		s.logger = logger.(*FinderLogger)
 	}
 
-	if cache := finder.Find(autoinit.SearchOption{
+	if cache := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*FinderCache)(nil)),
 	}); cache != nil {
 		s.cache = cache.(*FinderCache)
 	}
 
-	if db := finder.Find(autoinit.SearchOption{
+	if db := finder.Find(&autoinit.SearchOption{
 		ByType: reflect.TypeOf((*FinderDatabase)(nil)),
 	}); db != nil {
 		s.db = db.(*FinderDatabase)
@@ -243,7 +243,7 @@ type CustomService struct {
 
 func (c *CustomService) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, c, parent)
-	if logger := finder.Find(autoinit.SearchOption{
+	if logger := finder.Find(&autoinit.SearchOption{
 		ByFieldName: "PrimaryLogger",
 	}); logger != nil {
 		c.primary = logger.(*FinderLogger)
@@ -298,7 +298,7 @@ func (ts *TaggedService) Init(ctx context.Context, parent interface{}) error {
 	finder := autoinit.NewComponentFinder(ctx, ts, parent)
 
 	// Find main cache
-	if cache := finder.Find(autoinit.SearchOption{
+	if cache := finder.Find(&autoinit.SearchOption{
 		ByCustomTag: "main",
 		TagKey:      "component",
 	}); cache != nil {
@@ -306,7 +306,7 @@ func (ts *TaggedService) Init(ctx context.Context, parent interface{}) error {
 	}
 
 	// Find fallback cache
-	if cache := finder.Find(autoinit.SearchOption{
+	if cache := finder.Find(&autoinit.SearchOption{
 		ByCustomTag: "fallback",
 		TagKey:      "component",
 	}); cache != nil {
