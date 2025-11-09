@@ -1,0 +1,155 @@
+// Example of safer implementation with cycle detection
+package autoinit
+
+import (
+	"context"
+	"reflect"
+)
+
+// asSearchSafe performs search with cycle detection and depth limiting
+func asSearchSafe(ctx context.Context, self, parent interface{}, targetType reflect.Type, filters ...Filter) interface{} {
+	// First check if we have a TestContext in the context
+	if tc := getTestContext(ctx); tc != nil {
+		tc.mu.RLock()
+		defer tc.mu.RUnlock()
+
+		if candidates, exists := tc.dependencies[targetType]; exists {
+			for _, candidate := range candidates {
+				if len(filters) == 0 {
+					return candidate
+				}
+				return candidate
+			}
+		}
+	}
+
+	if parent == nil {
+		return nil
+	}
+
+	// Initialize visited map for cycle detection
+	visited := make(map[uintptr]bool)
+
+	// Search in immediate parent's fields
+	if result := searchInStructSafe(parent, self, targetType, filters, visited, 0, 50); result != nil {
+		return result
+	}
+
+	// Search in the parent chain
+	if chain := getParentChain(ctx); chain != nil {
+		for i := 0; i < chain.Len(); i++ {
+			ancestor := chain.GetParent(i)
+			if ancestor == nil || ancestor == parent {
+				continue
+			}
+
+			// Each ancestor gets searched with the same visited map to prevent cycles
+			if result := searchInStructSafe(ancestor, self, targetType, filters, visited, 0, 50); result != nil {
+				return result
+			}
+		}
+	}
+
+	return nil
+}
+
+// searchInStructSafe searches with cycle detection and depth limiting
+func searchInStructSafe(parent, exclude interface{}, targetType reflect.Type, filters []Filter, visited map[uintptr]bool, depth, maxDepth int) interface{} {
+	// Depth check to prevent stack overflow
+	if depth > maxDepth {
+		return nil
+	}
+
+	v := reflect.ValueOf(parent)
+	if v.Kind() == reflect.Ptr {
+		// Cycle detection for pointer types
+		if v.Pointer() != 0 {
+			if visited[v.Pointer()] {
+				return nil // Already visited, prevent cycle
+			}
+			visited[v.Pointer()] = true
+		}
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+
+	t := v.Type()
+
+	// Search direct fields first
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		if !field.CanInterface() {
+			continue
+		}
+
+		fieldInterface := field.Interface()
+		if fieldInterface == exclude {
+			continue
+		}
+
+		if field.Kind() == reflect.Ptr && field.IsNil() {
+			continue
+		}
+
+		if matchesTargetType(field, targetType) && matchesAllFilters(field, &fieldType, filters) {
+			if field.Kind() != reflect.Ptr && field.CanAddr() {
+				return field.Addr().Interface()
+			}
+			return fieldInterface
+		}
+	}
+
+	// Search in collections and embedded structs
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		// Search in slices/arrays
+		if field.Kind() == reflect.Slice || field.Kind() == reflect.Array {
+			for j := 0; j < field.Len(); j++ {
+				elem := field.Index(j)
+				if elem.CanInterface() {
+					elemInterface := elem.Interface()
+					if elemInterface != exclude && matchesTargetType(elem, targetType) {
+						if len(filters) == 0 {
+							if elem.Kind() != reflect.Ptr && elem.CanAddr() {
+								return elem.Addr().Interface()
+							}
+							return elemInterface
+						}
+					}
+				}
+			}
+		}
+
+		// Search in maps
+		if field.Kind() == reflect.Map {
+			for _, key := range field.MapKeys() {
+				val := field.MapIndex(key)
+				if val.CanInterface() {
+					valInterface := val.Interface()
+					if valInterface != exclude && matchesTargetType(val, targetType) {
+						if len(filters) == 0 {
+							return valInterface
+						}
+					}
+				}
+			}
+		}
+
+		// Search in embedded structs WITH cycle protection
+		if fieldType.Anonymous && (field.Kind() == reflect.Struct || (field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct)) {
+			// Recursively search with incremented depth and same visited map
+			if result := searchInStructSafe(field.Interface(), exclude, targetType, filters, visited, depth+1, maxDepth); result != nil {
+				return result
+			}
+		}
+	}
+
+	return nil
+}
