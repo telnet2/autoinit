@@ -40,11 +40,38 @@ func NewComponentFinder(ctx context.Context, self, parent interface{}) *Componen
 
 // Find searches for a component using the specified options
 // Search order:
-// 1. Siblings at current level
-// 2. Parent's siblings (aunts/uncles)
-// 3. Grandparent's siblings, etc.
+// 1. Immediate parent's fields (siblings)
+// 2. Ancestors in the parent chain and their fields
+// 3. Searches recursively through slices, maps, and embedded structs
+//
+// This matches the behavior of the As function for consistency.
 func (cf *ComponentFinder) Find(opt *SearchOption) interface{} {
-	return cf.searchHierarchy(cf.parent, cf.self, opt, 0)
+	if cf.parent == nil {
+		return nil
+	}
+
+	// Search in immediate parent's fields
+	if result := cf.searchSiblings(cf.parent, cf.self, opt); result != nil {
+		return result
+	}
+
+	// Search in the parent chain for a more comprehensive search
+	if chain := cf.getParentChain(); chain != nil {
+		// Start from the parent level and search up through ancestors
+		for i := 0; i < chain.Len(); i++ {
+			ancestor := chain.GetParent(i)
+			if ancestor == nil || ancestor == cf.parent {
+				continue // Skip nil or already searched parent
+			}
+
+			// Search in this ancestor's fields
+			if result := cf.searchSiblings(ancestor, cf.self, opt); result != nil {
+				return result
+			}
+		}
+	}
+
+	return nil
 }
 
 // FindSibling searches only among siblings at the same level
@@ -58,42 +85,6 @@ func (cf *ComponentFinder) FindSibling(opt *SearchOption) interface{} {
 // FindAncestor searches up the parent chain for a matching component
 func (cf *ComponentFinder) FindAncestor(opt *SearchOption) interface{} {
 	return cf.searchAncestors(cf.parent, opt)
-}
-
-// searchHierarchy implements the full search algorithm
-func (cf *ComponentFinder) searchHierarchy(current interface{}, exclude interface{}, opt *SearchOption, depth int) interface{} {
-	if current == nil || depth > 10 { // Prevent infinite recursion
-		return nil
-	}
-
-	// Step 1: Search siblings at current level
-	if result := cf.searchSiblings(current, exclude, opt); result != nil {
-		return result
-	}
-
-	// Step 2: Get parent chain from context to search higher levels
-	if chain := cf.getParentChain(); chain != nil {
-		// Search each level up the hierarchy
-		for i := depth + 1; i < len(chain.chain); i++ {
-			ancestor := chain.chain[len(chain.chain)-1-i]
-			if ancestor == nil {
-				continue
-			}
-
-			// Search siblings at this ancestor level
-			// Exclude the child that we came from
-			var excludeAtLevel interface{}
-			if i > 0 && i-1 < len(chain.chain) {
-				excludeAtLevel = chain.chain[len(chain.chain)-i]
-			}
-
-			if result := cf.searchSiblings(ancestor, excludeAtLevel, opt); result != nil {
-				return result
-			}
-		}
-	}
-
-	return nil
 }
 
 // searchSiblings searches among sibling components in the same parent
