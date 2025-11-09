@@ -61,11 +61,19 @@ func WithTag(key, value string) Filter {
 // All filters are applied conjunctively (AND logic) to narrow down candidates.
 // This follows the Go CDK pattern for escape hatches with additional filtering capabilities.
 //
+// Search order:
+//  1. Immediate parent's fields (siblings)
+//  2. Ancestors in the parent chain and their fields
+//  3. Searches recursively through slices, maps, and embedded structs
+//
+// This enables components to discover dependencies anywhere in the object graph,
+// not just in their immediate parent.
+//
 // Usage:
 //
 //	var db *Database
 //	if As(ctx, self, parent, &db) {
-//	    // Found any Database type
+//	    // Found any Database type anywhere in the object graph
 //	}
 //
 //	var primaryDB *Database
@@ -121,6 +129,10 @@ func MustAs[T any](ctx context.Context, self, parent interface{}, target *T, fil
 }
 
 // asSearch performs the actual search with conjunctive filtering
+// Search order:
+// 1. TestContext (if present)
+// 2. Immediate parent's fields
+// 3. Ancestors in the parent chain and their siblings
 func asSearch(ctx context.Context, self, parent interface{}, targetType reflect.Type, filters ...Filter) interface{} {
 	// First check if we have a TestContext in the context
 	if tc := getTestContext(ctx); tc != nil {
@@ -145,8 +157,29 @@ func asSearch(ctx context.Context, self, parent interface{}, targetType reflect.
 		return nil
 	}
 
-	// Search in parent's fields
-	return searchInStruct(parent, self, targetType, filters)
+	// Search in immediate parent's fields
+	if result := searchInStruct(parent, self, targetType, filters); result != nil {
+		return result
+	}
+
+	// Search in the parent chain for a more comprehensive search
+	if chain := getParentChain(ctx); chain != nil {
+		// Start from the parent level and search up through ancestors
+		for i := 0; i < chain.Len(); i++ {
+			ancestor := chain.GetParent(i)
+			if ancestor == nil || ancestor == parent {
+				continue // Skip nil or already searched parent
+			}
+
+			// Search in this ancestor's fields
+			// We exclude components we've already seen to avoid redundant searches
+			if result := searchInStruct(ancestor, self, targetType, filters); result != nil {
+				return result
+			}
+		}
+	}
+
+	return nil
 }
 
 // searchInStruct searches for matching components in a struct

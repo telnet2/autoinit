@@ -462,3 +462,152 @@ func TestAsType(t *testing.T) {
 		t.Error("AsType should return false for non-existent type")
 	}
 }
+
+// Test types for TestAsSearchInAncestors
+type AncestorConfig struct {
+	MaxConnections int
+	Timeout        int
+}
+
+type AncestorGrandChild struct {
+	Name          string
+	foundConfig   *AncestorConfig
+	configFound   bool
+	initCalled    bool
+	parentWasNil  bool
+}
+
+func (gc *AncestorGrandChild) Init(ctx context.Context, parent interface{}) error {
+	gc.initCalled = true
+	if parent == nil {
+		gc.parentWasNil = true
+	}
+	// Try to find Config - it's in Root (grandparent), not in Child (immediate parent)
+	gc.configFound = autoinit.As(ctx, gc, parent, &gc.foundConfig)
+	return nil
+}
+
+type AncestorChild struct {
+	GrandChild *AncestorGrandChild
+	// No Config here - GrandChild will need to search up to Root
+}
+
+type AncestorRoot struct {
+	Config *AncestorConfig // Config is at the root level
+	Child  *AncestorChild
+}
+
+// TestAsSearchInAncestors tests that As can find components in ancestor objects,
+// not just in the immediate parent (siblings). This test uses AutoInit to properly
+// set up the parent chain.
+func TestAsSearchInAncestors(t *testing.T) {
+	// Setup the structure
+	root := &AncestorRoot{
+		Config: &AncestorConfig{MaxConnections: 100, Timeout: 30},
+		Child: &AncestorChild{
+			GrandChild: &AncestorGrandChild{Name: "deep"},
+		},
+	}
+
+	// Run AutoInit which will properly set up the parent chain
+	ctx := context.Background()
+	if err := autoinit.AutoInit(ctx, root); err != nil {
+		t.Fatalf("AutoInit failed: %v", err)
+	}
+
+	// Verify that GrandChild's Init was called
+	if !root.Child.GrandChild.initCalled {
+		t.Fatal("GrandChild.Init was not called")
+	}
+
+	// Verify that the config was found via ancestor search
+	if !root.Child.GrandChild.configFound {
+		t.Error("Failed to find Config in ancestor (Root)")
+	}
+
+	if root.Child.GrandChild.foundConfig == nil {
+		t.Fatal("foundConfig should not be nil")
+	}
+
+	if root.Child.GrandChild.foundConfig.MaxConnections != 100 {
+		t.Errorf("Expected MaxConnections=100, got %d", root.Child.GrandChild.foundConfig.MaxConnections)
+	}
+
+	if root.Child.GrandChild.foundConfig.Timeout != 30 {
+		t.Errorf("Expected Timeout=30, got %d", root.Child.GrandChild.foundConfig.Timeout)
+	}
+
+	// Verify that the found config is the exact same instance
+	if root.Child.GrandChild.foundConfig != root.Config {
+		t.Error("Found config should be the same instance as root.Config")
+	}
+}
+
+// Test types for TestAsSearchAcrossLevels
+type MultiLevelDatabase struct {
+	Name string
+}
+
+type MultiLevel3 struct {
+	Name    string
+	foundDB *MultiLevelDatabase
+	dbFound bool
+}
+
+func (l3 *MultiLevel3) Init(ctx context.Context, parent interface{}) error {
+	// Search for Database - it's in Root, not in Level2 or Level1
+	l3.dbFound = autoinit.As(ctx, l3, parent, &l3.foundDB)
+	return nil
+}
+
+type MultiLevel2 struct {
+	Level3 *MultiLevel3
+	// No Database here
+}
+
+type MultiLevel1 struct {
+	Level2 *MultiLevel2
+	// No Database here either
+}
+
+type MultiLevelRoot struct {
+	Database *MultiLevelDatabase // Database is only at Root
+	Level1   *MultiLevel1
+}
+
+// TestAsSearchAcrossLevels tests searching across multiple ancestor levels
+// Database is at Root level, and Level3 needs to find it by searching through
+// multiple ancestor levels (Level2 -> Level1 -> Root)
+func TestAsSearchAcrossLevels(t *testing.T) {
+	root := &MultiLevelRoot{
+		Database: &MultiLevelDatabase{Name: "MainDB"},
+		Level1: &MultiLevel1{
+			Level2: &MultiLevel2{
+				Level3: &MultiLevel3{Name: "deep"},
+			},
+		},
+	}
+
+	// Run AutoInit to properly set up the parent chain
+	ctx := context.Background()
+	if err := autoinit.AutoInit(ctx, root); err != nil {
+		t.Fatalf("AutoInit failed: %v", err)
+	}
+
+	// Verify that Level3 found the Database from Root
+	if !root.Level1.Level2.Level3.dbFound {
+		t.Error("Failed to find Database across multiple ancestor levels")
+	}
+
+	if root.Level1.Level2.Level3.foundDB == nil {
+		t.Fatal("foundDB should not be nil")
+	}
+
+	if root.Level1.Level2.Level3.foundDB.Name != "MainDB" {
+		t.Errorf("Expected Database name 'MainDB', got '%s'", root.Level1.Level2.Level3.foundDB.Name)
+	}
+
+	if root.Level1.Level2.Level3.foundDB != root.Database {
+		t.Error("Found database should be the same instance as root.Database")
+	}
+}
