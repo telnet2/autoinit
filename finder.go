@@ -45,13 +45,18 @@ func NewComponentFinder(ctx context.Context, self, parent interface{}) *Componen
 // 3. Searches recursively through slices, maps, and embedded structs
 //
 // This matches the behavior of the As function for consistency.
+// Includes cycle detection and depth limiting for safety.
 func (cf *ComponentFinder) Find(opt *SearchOption) interface{} {
 	if cf.parent == nil {
 		return nil
 	}
 
+	// Initialize visited map for cycle detection
+	visited := make(map[uintptr]bool)
+	const maxDepth = 50 // Reasonable limit for nested structures
+
 	// Search in immediate parent's fields
-	if result := cf.searchSiblings(cf.parent, cf.self, opt); result != nil {
+	if result := cf.searchSiblingsSafe(cf.parent, cf.self, opt, visited, 0, maxDepth); result != nil {
 		return result
 	}
 
@@ -64,8 +69,9 @@ func (cf *ComponentFinder) Find(opt *SearchOption) interface{} {
 				continue // Skip nil or already searched parent
 			}
 
-			// Search in this ancestor's fields
-			if result := cf.searchSiblings(ancestor, cf.self, opt); result != nil {
+			// Search in this ancestor's fields with the same visited map
+			// This prevents cycles across the entire search
+			if result := cf.searchSiblingsSafe(ancestor, cf.self, opt, visited, 0, maxDepth); result != nil {
 				return result
 			}
 		}
@@ -87,14 +93,33 @@ func (cf *ComponentFinder) FindAncestor(opt *SearchOption) interface{} {
 	return cf.searchAncestors(cf.parent, opt)
 }
 
-// searchSiblings searches among sibling components in the same parent
+// searchSiblings searches among sibling components (backward compatibility wrapper)
 func (cf *ComponentFinder) searchSiblings(parent interface{}, exclude interface{}, opt *SearchOption) interface{} {
+	visited := make(map[uintptr]bool)
+	const maxDepth = 50
+	return cf.searchSiblingsSafe(parent, exclude, opt, visited, 0, maxDepth)
+}
+
+// searchSiblingsSafe searches among sibling components with cycle detection and depth limiting
+func (cf *ComponentFinder) searchSiblingsSafe(parent interface{}, exclude interface{}, opt *SearchOption, visited map[uintptr]bool, depth, maxDepth int) interface{} {
+	// Depth check to prevent stack overflow
+	if depth > maxDepth {
+		return nil
+	}
+
 	if parent == nil {
 		return nil
 	}
 
 	v := reflect.ValueOf(parent)
 	if v.Kind() == reflect.Ptr {
+		// Cycle detection for pointer types
+		if v.Pointer() != 0 {
+			if visited[v.Pointer()] {
+				return nil // Already visited, prevent cycle
+			}
+			visited[v.Pointer()] = true
+		}
 		v = v.Elem()
 	}
 
@@ -134,9 +159,10 @@ func (cf *ComponentFinder) searchSiblings(parent interface{}, exclude interface{
 			return fieldInterface
 		}
 
-		// For embedded structs, search their fields too
+		// For embedded structs, search their fields too WITH cycle protection
 		if fieldType.Anonymous && (field.Kind() == reflect.Struct || (field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct)) {
-			if result := cf.searchSiblings(fieldInterface, exclude, opt); result != nil {
+			// Recursively search with incremented depth and same visited map
+			if result := cf.searchSiblingsSafe(fieldInterface, exclude, opt, visited, depth+1, maxDepth); result != nil {
 				return result
 			}
 		}

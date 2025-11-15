@@ -133,6 +133,8 @@ func MustAs[T any](ctx context.Context, self, parent interface{}, target *T, fil
 // 1. TestContext (if present)
 // 2. Immediate parent's fields
 // 3. Ancestors in the parent chain and their siblings
+//
+// Includes cycle detection and depth limiting for safety.
 func asSearch(ctx context.Context, self, parent interface{}, targetType reflect.Type, filters ...Filter) interface{} {
 	// First check if we have a TestContext in the context
 	if tc := getTestContext(ctx); tc != nil {
@@ -157,8 +159,12 @@ func asSearch(ctx context.Context, self, parent interface{}, targetType reflect.
 		return nil
 	}
 
+	// Initialize visited map for cycle detection
+	visited := make(map[uintptr]bool)
+	const maxDepth = 50 // Reasonable limit for nested structures
+
 	// Search in immediate parent's fields
-	if result := searchInStruct(parent, self, targetType, filters); result != nil {
+	if result := searchInStructSafe(parent, self, targetType, filters, visited, 0, maxDepth); result != nil {
 		return result
 	}
 
@@ -171,9 +177,9 @@ func asSearch(ctx context.Context, self, parent interface{}, targetType reflect.
 				continue // Skip nil or already searched parent
 			}
 
-			// Search in this ancestor's fields
-			// We exclude components we've already seen to avoid redundant searches
-			if result := searchInStruct(ancestor, self, targetType, filters); result != nil {
+			// Search in this ancestor's fields with the same visited map
+			// This prevents cycles across the entire search, not just within one ancestor
+			if result := searchInStructSafe(ancestor, self, targetType, filters, visited, 0, maxDepth); result != nil {
 				return result
 			}
 		}
@@ -182,10 +188,22 @@ func asSearch(ctx context.Context, self, parent interface{}, targetType reflect.
 	return nil
 }
 
-// searchInStruct searches for matching components in a struct
-func searchInStruct(parent, exclude interface{}, targetType reflect.Type, filters []Filter) interface{} {
+// searchInStructSafe searches for matching components with cycle detection and depth limiting
+func searchInStructSafe(parent, exclude interface{}, targetType reflect.Type, filters []Filter, visited map[uintptr]bool, depth, maxDepth int) interface{} {
+	// Depth check to prevent stack overflow
+	if depth > maxDepth {
+		return nil
+	}
+
 	v := reflect.ValueOf(parent)
 	if v.Kind() == reflect.Ptr {
+		// Cycle detection for pointer types
+		if v.Pointer() != 0 {
+			if visited[v.Pointer()] {
+				return nil // Already visited, prevent cycle
+			}
+			visited[v.Pointer()] = true
+		}
 		v = v.Elem()
 	}
 
@@ -274,9 +292,10 @@ func searchInStruct(parent, exclude interface{}, targetType reflect.Type, filter
 			}
 		}
 
-		// Search in embedded structs
+		// Search in embedded structs WITH cycle protection
 		if fieldType.Anonymous && (field.Kind() == reflect.Struct || (field.Kind() == reflect.Ptr && field.Elem().Kind() == reflect.Struct)) {
-			if result := searchInStruct(field.Interface(), exclude, targetType, filters); result != nil {
+			// Recursively search with incremented depth and same visited map
+			if result := searchInStructSafe(field.Interface(), exclude, targetType, filters, visited, depth+1, maxDepth); result != nil {
 				return result
 			}
 		}
